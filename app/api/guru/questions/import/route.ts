@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, getRowCount } from "@/lib/db";
+import { query } from "@/lib/db";
 import XLSX from "xlsx-js-style";
 
 // POST - Import soal dari Excel
@@ -91,12 +91,9 @@ export async function POST(request: NextRequest) {
           if (value === null || value === undefined) return "";
           if (typeof value === "string") return value.trim();
           if (typeof value === "number") {
-            // Jika angka, cek apakah bisa berupa integer atau desimal
             if (Number.isInteger(value)) {
               return value.toString();
             }
-            // Untuk desimal, gunakan format yang sesuai
-            // Ganti titik dengan koma untuk format Indonesia
             return value.toString().replace(".", ",");
           }
           if (typeof value === "boolean") return value ? "TRUE" : "FALSE";
@@ -172,42 +169,6 @@ export async function POST(request: NextRequest) {
       message: `Berhasil import ${results.success} soal`,
       results,
     });
-  } catch (error) {
-    console.error("Error importing questions:", error);
-    return NextResponse.json(
-      { error: "Gagal mengimport data" },
-      { status: 500 }
-    );
-  }
-}
-            continue;
-          }
-
-          const id = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
-
-          await connection.query(
-            `INSERT INTO questions 
-              (id, question, option_a, option_b, option_c, option_d, correct, level) 
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-            [id, question, optionA, optionB, optionC, optionD, correct, level]
-          );
-
-          results.success++;
-        } catch (err) {
-          console.error(`Error importing row ${rowNumber}:`, err);
-          results.failed.push({
-            row: rowNumber,
-            reason: err instanceof Error ? err.message : "Error server",
-          });
-        }
-      }
-
-      return NextResponse.json({
-        message: `Berhasil import ${results.success} soal`,
-        results,
-      });
-    } finally {
-          }
   } catch (error) {
     console.error("Error importing questions:", error);
     return NextResponse.json(

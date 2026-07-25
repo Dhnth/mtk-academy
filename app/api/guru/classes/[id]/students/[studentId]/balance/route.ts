@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, getFirstRow, getRowCount } from "@/lib/db";
+import { query, getFirstRow } from "@/lib/db";
 
 interface StudentBalanceRow {
   id: string;
@@ -65,33 +65,24 @@ export async function PATCH(
     if (type === "EXPENSE") {
       // KURANGI SALDO: Gunakan income dulu, sisanya ke expense
       if (currentBalance >= numericAmount) {
-        // Jika saldo cukup, kurangi income
         newIncome = currentIncome - numericAmount;
       } else {
-        // Jika saldo tidak cukup
-        // 1. Habiskan income (jadikan 0)
         newIncome = 0;
-        // 2. Sisa yang harus dibayar = numericAmount - currentBalance
         const remaining = numericAmount - currentBalance;
-        // 3. Tambahkan sisa ke expense
         newExpense = currentExpense + remaining;
       }
     } else {
       // TAMBAH SALDO (INCOME): Kurangi expense dulu, sisanya ke income
       if (currentExpense > 0) {
-        // Kurangi expense terlebih dahulu
         if (currentExpense >= numericAmount) {
-          // Jika expense cukup, kurangi expense saja
           newExpense = currentExpense - numericAmount;
-          newIncome = currentIncome; // income tetap
+          newIncome = currentIncome;
         } else {
-          // Jika expense kurang, habiskan expense, sisanya ke income
           const remaining = numericAmount - currentExpense;
           newExpense = 0;
           newIncome = currentIncome + remaining;
         }
       } else {
-        // Tidak ada expense, langsung tambah income
         newIncome = currentIncome + numericAmount;
       }
     }
@@ -111,23 +102,6 @@ export async function PATCH(
         balance: newBalance < 0 ? 0 : newBalance,
       },
     });
-  } catch (error) {
-    console.error("Error updating balance:", error);
-    return NextResponse.json(
-      { error: "Gagal memperbarui saldo" },
-      { status: 500 }
-    );
-  }
-}
-        message: `Saldo berhasil ${type === "INCOME" ? "ditambahkan" : "dikurangi"}`,
-        data: {
-          income: newIncome,
-          expense: newExpense,
-          balance: newBalance < 0 ? 0 : newBalance,
-        },
-      });
-    } finally {
-          }
   } catch (error) {
     console.error("Error updating balance:", error);
     return NextResponse.json(

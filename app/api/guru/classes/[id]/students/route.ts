@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { query, getRows, getFirstRow, getRowCount } from "@/lib/db";
+import { query, getRows, getRowCount } from "@/lib/db";
 import bcrypt from "bcryptjs";
 
 interface StudentRow {
@@ -162,11 +162,6 @@ export async function POST(
   } catch (error) {
     console.error("Error creating student:", error);
     return NextResponse.json(
-      { error: "Gagal menambahkan siswa" },
-      { status: 500 }
-    );
-  }
-}
       { error: "Gagal menambahkan siswa" },
       { status: 500 }
     );

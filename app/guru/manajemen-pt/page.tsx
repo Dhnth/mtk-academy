@@ -76,14 +76,14 @@ export default function ManajemenPTPage() {
 
   // Filter classes by search
   const filteredClasses = classes.filter((cls) =>
-    cls.name.toLowerCase().includes(searchTerm.toLowerCase())
+    cls.name.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Pagination
   const totalPages = Math.ceil(filteredClasses.length / itemsPerPage);
   const paginatedClasses = filteredClasses.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   // Format currency
@@ -97,13 +97,20 @@ export default function ManajemenPTPage() {
   };
 
   // Format date
-  const formatDate = (dateStr: string): string => {
-    const date = new Date(dateStr);
-    return new Intl.DateTimeFormat("id-ID", {
-      day: "numeric",
-      month: "short",
-      year: "numeric",
-    }).format(date);
+  const formatDate = (dateStr: string | null | undefined): string => {
+    if (!dateStr) return "-";
+    try {
+      const date = new Date(dateStr);
+      // Cek apakah date valid
+      if (isNaN(date.getTime())) return "-";
+      return new Intl.DateTimeFormat("id-ID", {
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      }).format(date);
+    } catch {
+      return "-";
+    }
   };
 
   // Hitung saldo (tidak pernah negatif)
@@ -227,7 +234,10 @@ export default function ManajemenPTPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {[1, 2, 3, 4, 5, 6].map((i) => (
-            <div key={i} className="bg-white border border-slate-200 rounded-2xl p-5 h-48">
+            <div
+              key={i}
+              className="bg-white border border-slate-200 rounded-2xl p-5 h-48"
+            >
               <div className="h-6 w-32 bg-slate-200 rounded mb-3"></div>
               <div className="h-4 w-24 bg-slate-200 rounded mb-2"></div>
               <div className="h-4 w-20 bg-slate-200 rounded"></div>
@@ -243,7 +253,9 @@ export default function ManajemenPTPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-        <h3 className="text-xl font-bold text-slate-900 mb-2">Gagal Memuat Data</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">
+          Gagal Memuat Data
+        </h3>
         <p className="text-slate-500 text-center max-w-md">{error}</p>
         <button
           onClick={() => fetchClasses()}
@@ -319,7 +331,10 @@ export default function ManajemenPTPage() {
         <>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {paginatedClasses.map((cls) => {
-              const balance = calculateBalance(cls.totalIncome, cls.totalExpense);
+              const balance = calculateBalance(
+                cls.totalIncome,
+                cls.totalExpense,
+              );
               const isDeficit = cls.totalExpense > cls.totalIncome;
 
               return (
@@ -418,7 +433,7 @@ export default function ManajemenPTPage() {
                                   (cls.totalIncome /
                                     (cls.totalIncome + cls.totalExpense)) *
                                     100,
-                                  100
+                                  100,
                                 )
                               : 0
                           }%`,
@@ -433,7 +448,7 @@ export default function ManajemenPTPage() {
                                   (cls.totalExpense /
                                     (cls.totalIncome + cls.totalExpense)) *
                                     100,
-                                  100
+                                  100,
                                 )
                               : 0
                           }%`,
@@ -472,7 +487,9 @@ export default function ManajemenPTPage() {
                 Halaman {currentPage} dari {totalPages}
               </span>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="p-2 bg-white border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
@@ -589,8 +606,8 @@ export default function ManajemenPTPage() {
             <div className="flex items-center gap-3 p-3 bg-red-50 border border-red-200 rounded-xl mb-4">
               <AlertCircle className="w-5 h-5 text-red-600 shrink-0" />
               <p className="text-sm text-red-700">
-                Apakah Anda yakin ingin menghapus PT ini? Tindakan ini tidak dapat
-                dibatalkan.
+                Apakah Anda yakin ingin menghapus PT ini? Tindakan ini tidak
+                dapat dibatalkan.
               </p>
             </div>
             <div className="flex gap-3">
