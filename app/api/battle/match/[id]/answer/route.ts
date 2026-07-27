@@ -22,6 +22,7 @@ interface MatchData {
 interface UserData {
   income: number;
   expense: number;
+  level: number;
 }
 
 interface TeamMember {
@@ -44,6 +45,57 @@ interface MatchQuestionRow {
 interface ScoreRow {
   score1: number;
   score2: number;
+}
+
+// Fungsi untuk menghitung hadiah berdasarkan level
+function calculateRewards(level: number) {
+  const baseExpWin = 35;
+  const baseMoneyWin = 10000000;
+  const baseExpLose = -15;
+  const baseMoneyLose = -5000000;
+  
+  const multiplier = Math.pow(1.5, level - 1);
+  
+  const expWin = Math.round(baseExpWin * multiplier);
+  const moneyWin = Math.round(baseMoneyWin * multiplier);
+  const expLose = Math.round(baseExpLose * multiplier);
+  const moneyLose = Math.round(baseMoneyLose * multiplier);
+  
+  return { expWin, moneyWin, expLose, moneyLose };
+}
+
+// Fungsi untuk mendapatkan avg level match
+async function getAvgLevel(matchId: string): Promise<number> {
+  const matchDataResult = await query<{ player1_id: string; player2_id: string; match_type: "SOLO" | "TEAM" }>(
+    "SELECT player1_id, player2_id, match_type FROM matches WHERE id = $1",
+    [matchId]
+  );
+  const match = getFirstRow(matchDataResult);
+
+  if (!match) return 1;
+
+  let avgLevel = 1;
+
+  if (match.match_type === "SOLO") {
+    const levelsResult = await query<{ avg_level: number }>(
+      `SELECT AVG(level) as avg_level FROM users WHERE id IN ($1, $2)`,
+      [match.player1_id, match.player2_id]
+    );
+    const levels = getFirstRow(levelsResult);
+    avgLevel = Math.round(Number(levels?.avg_level || 1));
+  } else {
+    const levelsResult = await query<{ avg_level: number }>(
+      `SELECT AVG(u.level) as avg_level 
+       FROM users u
+       JOIN team_members tm ON u.id = tm.user_id
+       WHERE tm.team_id IN ($1, $2)`,
+      [match.player1_id, match.player2_id]
+    );
+    const levels = getFirstRow(levelsResult);
+    avgLevel = Math.round(Number(levels?.avg_level || 1));
+  }
+
+  return avgLevel;
 }
 
 export async function POST(
@@ -105,7 +157,6 @@ export async function POST(
         );
       }
 
-      // Cek apakah match sudah selesai
       if (match.status === "COMPLETED") {
         return NextResponse.json(
           { error: "Match sudah selesai" },
@@ -113,11 +164,9 @@ export async function POST(
         );
       }
 
-      // Cek apakah user terlibat
+      // Cek user terlibat
       let isPlayer1 = false;
       let isPlayer2 = false;
-
-      // For TEAM: get ordered members for turn calculation
       let team1Members: TeamMember[] = [];
       let team2Members: TeamMember[] = [];
 
@@ -151,7 +200,7 @@ export async function POST(
         );
       }
 
-      // ── TEAM: turn-based check ──────────────────────────────────
+      // TEAM: turn-based check
       if (match.match_type === "TEAM") {
         const myTeamMembers = isPlayer1 ? team1Members : team2Members;
         const teamSize = myTeamMembers.length;
@@ -163,7 +212,6 @@ export async function POST(
           );
         }
 
-        // turnIndex cycles per round: (round - 1) % teamSize
         const turnIndex = (match.round - 1) % teamSize;
         const currentAnswerer = myTeamMembers[turnIndex]?.user_id;
 
@@ -182,7 +230,7 @@ export async function POST(
         }
       }
 
-      // Cek apakah ronde ini SUDAH DIJAWAB oleh siapa pun
+      // Cek apakah sudah dijawab
       if (match.player1_answer !== null || match.player2_answer !== null) {
         return NextResponse.json(
           {
@@ -193,7 +241,14 @@ export async function POST(
         );
       }
 
-      // Tentukan kolom mana yang diisi
+      // Ambil time_limit dari match_questions
+      const timeLimitResult = await query<{ time_limit: number }>(
+        "SELECT time_limit FROM match_questions WHERE id = $1",
+        [match.match_question_id]
+      );
+      const timeLimitData = getFirstRow(timeLimitResult);
+      const timeLimit = timeLimitData?.time_limit || 30;
+
       const playerColumn = isPlayer1 ? "player1_answer" : "player2_answer";
       const timeColumn = isPlayer1 ? "player1_time" : "player2_time";
       const myScoreColumn = isPlayer1 ? "score1" : "score2";
@@ -203,16 +258,12 @@ export async function POST(
       const isCorrect = !isTimeout && answer === match.correct;
       let winnerOfRound: string | null = null;
 
-      // Update jawaban pemain ini di database
+      // Update jawaban pemain ini di database - gunakan timeLimit
       await query(
         `UPDATE match_questions SET ${playerColumn} = $1, ${timeColumn} = $2 WHERE id = $3`,
-        [answer || "TIMEOUT", time || 30, match.match_question_id]
+        [answer || "TIMEOUT", time || timeLimit, match.match_question_id]
       );
 
-      // LOGIKA POIN SPEED BATTLE:
-      // 1. Jika BENAR: Pemain ini dapat poin (+1)
-      // 2. Jika SALAH: Lawan dapat poin (+1)
-      // 3. Jika TIMEOUT: Tidak ada poin
       if (isTimeout) {
         winnerOfRound = null;
       } else if (isCorrect) {
@@ -222,7 +273,6 @@ export async function POST(
           [matchId]
         );
       } else {
-        // Salah jawab -> Poin untuk lawan
         winnerOfRound = isPlayer1 ? match.player2_id : match.player1_id;
         await query(
           `UPDATE matches SET ${opponentScoreColumn} = ${opponentScoreColumn} + 1 WHERE id = $1`,
@@ -230,7 +280,6 @@ export async function POST(
         );
       }
 
-      // Ambil skor terbaru
       const scoreResult = await query<ScoreRow>(
         "SELECT score1, score2 FROM matches WHERE id = $1",
         [matchId]
@@ -242,16 +291,17 @@ export async function POST(
 
       let matchStatus = match.status;
 
-      // Cek apakah ada yang sudah mencapai 3 kemenangan (Best of 5)
-      if (score1 >= 3 || score2 >= 3) {
+      // Hitung target score berdasarkan level
+      const avgLevel = await getAvgLevel(matchId);
+      const targetScore = 2 + avgLevel; // Level 1 = 3, Level 2 = 4, Level 3 = 5, dst.
+
+      if (score1 >= targetScore || score2 >= targetScore) {
         await endMatch(matchId, match, score1, score2);
         matchStatus = "COMPLETED";
       } else {
-        // Muat soal berikutnya untuk ronde baru
         await loadNextQuestion(matchId);
       }
 
-      // Dapatkan nama pengirim jawaban
       const userResult = await query<{ name: string }>(
         "SELECT name FROM users WHERE id = $1",
         [userId]
@@ -259,7 +309,6 @@ export async function POST(
       const user = getFirstRow(userResult);
       const answeredByName = user?.name || "Player";
 
-      // Hitung siapa giliran berikutnya di ronde BARU (round + 1)
       let nextAnswerer1: string | null = null;
       let nextAnswerer1Name: string | null = null;
       let nextAnswerer2: string | null = null;
@@ -280,7 +329,6 @@ export async function POST(
         }
       }
 
-      // Broadcast event Pusher
       await pusherServer.trigger(`match-${matchId}`, "question-update", {
         matchId,
         questionId,
@@ -346,10 +394,8 @@ async function endMatch(
     [winnerId, matchId]
   );
 
-  // Update user stats and rewards
   await updateUserStats(matchId, match.player1_id, match.player2_id, winnerId, match.match_type);
 
-  // Reset team status if it is a TEAM match
   if (match.match_type === "TEAM") {
     const resetTeamStatus = async (tId: string) => {
       const countResult = await query<{ count: string }>(
@@ -366,7 +412,6 @@ async function endMatch(
     await resetTeamStatus(match.player2_id);
   }
 
-  // Dapatkan nama pemenang
   let winnerName = "Winner";
   if (match.match_type === "SOLO") {
     const wUserResult = await query<{ name: string }>(
@@ -384,7 +429,6 @@ async function endMatch(
     winnerName = wTeam?.name || "Winner Team";
   }
 
-  // Trigger match ended
   await pusherServer.trigger(`match-${matchId}`, "match-ended", {
     winner_id: winnerId,
     winner_name: winnerName,
@@ -393,8 +437,7 @@ async function endMatch(
   });
 }
 
-// Helper: Update user stats and rewards
-// Helper: Update user stats and rewards
+// Helper: Update user stats with progressive rewards
 async function updateUserStats(
   matchId: string,
   player1Id: string,
@@ -402,11 +445,6 @@ async function updateUserStats(
   winnerId: string,
   matchType: "SOLO" | "TEAM"
 ) {
-  const expWin = 35;
-  const expLose = -15;
-  const moneyWin = 10000000;      // +10jt untuk winner
-  const moneyLose = -5000000;     // -5jt untuk loser (akan diproses)
-
   let winners: string[] = [];
   let losers: string[] = [];
 
@@ -414,7 +452,6 @@ async function updateUserStats(
     winners = [winnerId];
     losers = [winnerId === player1Id ? player2Id : player1Id];
   } else {
-    // Team match
     const winMembersResult = await query<{ user_id: string }>(
       "SELECT user_id FROM team_members WHERE team_id = $1",
       [winnerId]
@@ -429,8 +466,16 @@ async function updateUserStats(
     losers = loseMembersResult.rows.map((m) => m.user_id);
   }
 
-  // UPDATE WINNERS
   for (const wId of winners) {
+    const userDataResult = await query<{ level: number }>(
+      "SELECT level FROM users WHERE id = $1",
+      [wId]
+    );
+    const userData = getFirstRow(userDataResult);
+    const level = Number(userData?.level || 1);
+    
+    const { expWin, moneyWin } = calculateRewards(level);
+    
     await query(
       `UPDATE users SET wins = wins + 1, exp = exp + $1, income = income + $2 WHERE id = $3`,
       [expWin, moneyWin, wId]
@@ -444,41 +489,31 @@ async function updateUserStats(
     );
   }
 
-  // UPDATE LOSERS - DENGAN LOGIC YANG BENAR
   for (const lId of losers) {
-    // Ambil data user saat ini
-    const loserDataResult = await query<{ income: number; expense: number }>(
-      "SELECT income, expense FROM users WHERE id = $1",
+    const userDataResult = await query<{ level: number; income: number; expense: number }>(
+      "SELECT level, income, expense FROM users WHERE id = $1",
       [lId]
     );
-    const loserData = getFirstRow(loserDataResult);
-
-    const currentIncome = Number(loserData?.income || 0);
-    const currentExpense = Number(loserData?.expense || 0);
+    const userData = getFirstRow(userDataResult);
+    const level = Number(userData?.level || 1);
+    const currentIncome = Number(userData?.income || 0);
+    const currentExpense = Number(userData?.expense || 0);
     const currentBalance = currentIncome - currentExpense;
-    const deductionAmount = Math.abs(moneyLose); // 5.000.000
+    
+    const { expLose, moneyLose } = calculateRewards(level);
+    const deductionAmount = Math.abs(moneyLose);
 
     let newIncome = currentIncome;
     let newExpense = currentExpense;
 
-    // LOGIC YANG BENAR:
-    // 1. Kurangi INCOME (saldo) dulu
-    // 2. Jika income habis, sisanya masuk ke EXPENSE
     if (currentBalance >= deductionAmount) {
-      // Jika saldo cukup, kurangi income saja
       newIncome = currentIncome - deductionAmount;
-      // expense tetap
     } else {
-      // Jika saldo tidak cukup
-      // 1. Habiskan income (jadikan 0)
       newIncome = 0;
-      // 2. Sisa yang harus dibayar = deductionAmount - currentBalance
       const remaining = deductionAmount - currentBalance;
-      // 3. Tambahkan sisa ke expense
       newExpense = currentExpense + remaining;
     }
 
-    // Update user
     await query(
       `UPDATE users SET 
         losses = losses + 1, 
@@ -498,7 +533,7 @@ async function updateUserStats(
   }
 }
 
-// Helper: Load next question
+// Helper: Load next question with dynamic time limit
 async function loadNextQuestion(matchId: string) {
   const currentResult = await query<{ max_round: number }>(
     "SELECT MAX(round) as max_round FROM match_questions WHERE match_id = $1",
@@ -535,6 +570,9 @@ async function loadNextQuestion(matchId: string) {
     avgLevel = Math.round(Number(levels?.avg_level || 1));
   }
 
+  // Hitung time limit: 30 + (level - 1) * 5
+  const timeLimit = 30 + (avgLevel - 1) * 5;
+
   const questionsResult = await query<{ id: string }>(
     `SELECT id FROM questions WHERE level = $1 ORDER BY RANDOM() LIMIT 1`,
     [avgLevel]
@@ -556,8 +594,8 @@ async function loadNextQuestion(matchId: string) {
     const mqId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
     await query(
       `INSERT INTO match_questions (id, match_id, question_id, round, player1_answer, player2_answer, player1_time, player2_time, time_limit) 
-       VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, 30)`,
-      [mqId, matchId, questionId, nextRound]
+       VALUES ($1, $2, $3, $4, NULL, NULL, NULL, NULL, $5)`,
+      [mqId, matchId, questionId, nextRound, timeLimit]
     );
   }
 }

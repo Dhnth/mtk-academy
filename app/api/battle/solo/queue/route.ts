@@ -34,7 +34,6 @@ export async function POST() {
     const userId = session.user.id;
 
     try {
-      // Dapatkan level user
       const userResult = await query<UserLevelRow>(
         "SELECT level FROM users WHERE id = $1",
         [userId]
@@ -51,7 +50,6 @@ export async function POST() {
 
       const level = Number(userData.level || 1);
 
-      // Cek apakah user sudah di queue
       const existingResult = await query<QueueRow>(
         "SELECT id FROM solo_queue WHERE user_id = $1",
         [userId]
@@ -64,7 +62,6 @@ export async function POST() {
         );
       }
 
-      // Cari lawan dengan level yang sama (±1)
       const opponentsResult = await query<OpponentRow>(
         `SELECT 
           sq.user_id,
@@ -79,12 +76,10 @@ export async function POST() {
       );
 
       if (opponentsResult.rows.length > 0) {
-        // Dapatkan lawan!
         const opponent = opponentsResult.rows[0];
         const opponentId = opponent.user_id;
         const opponentLevel = Number(opponent.level || 1);
 
-        // Buat match baru
         const matchId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
         await query(
           `INSERT INTO matches (id, player1_id, player2_id, match_type, status) 
@@ -92,8 +87,10 @@ export async function POST() {
           [matchId, userId, opponentId]
         );
 
-        // Cari soal pertama (round 1)
         const avgLevel = Math.round((level + opponentLevel) / 2);
+        // Hitung time limit untuk match
+        const timeLimit = 30 + (avgLevel - 1) * 5;
+
         const questionsResult = await query<QuestionRow>(
           `SELECT id FROM questions WHERE level = $1 ORDER BY RANDOM() LIMIT 1`,
           [avgLevel]
@@ -115,25 +112,22 @@ export async function POST() {
           const mqId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
           await query(
             `INSERT INTO match_questions (id, match_id, question_id, round, player1_answer, player2_answer, player1_time, player2_time, time_limit) 
-             VALUES ($1, $2, $3, 1, NULL, NULL, NULL, NULL, 30)`,
-            [mqId, matchId, questionId]
+             VALUES ($1, $2, $3, 1, NULL, NULL, NULL, NULL, $4)`,
+            [mqId, matchId, questionId, timeLimit]
           );
         }
 
-        // Hapus kedua user dari queue
         await query(
           "DELETE FROM solo_queue WHERE user_id IN ($1, $2)",
           [userId, opponentId]
         );
 
-        // Trigger event ke kedua user
         await pusherServer.trigger("arena-global", "match-found", {
           player1Id: userId,
           player2Id: opponentId,
           matchId,
         });
 
-        // Trigger ke channel user masing-masing
         await pusherServer.trigger(`user-${userId}`, "match-found", { matchId });
         await pusherServer.trigger(`user-${opponentId}`, "match-found", { matchId });
 
@@ -144,7 +138,6 @@ export async function POST() {
         });
       }
 
-      // Tidak ada lawan, masuk queue
       const queueId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
       await query(
         "INSERT INTO solo_queue (id, user_id, level) VALUES ($1, $2, $3)",

@@ -57,6 +57,7 @@ interface MatchData {
   money_change: number;
   team1Members: TeamMemberInfo[];
   team2Members: TeamMemberInfo[];
+  target_score: number;
 }
 
 interface MatchQuestion {
@@ -136,7 +137,6 @@ export default function DuelPage() {
   const [showResult, setShowResult] = useState(false);
   const [resultData, setResultData] = useState<ResultData | null>(null);
 
-  // Refs to avoid stale closures
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const overlayTimerRef = useRef<NodeJS.Timeout | null>(null);
   const matchIdRef = useRef(matchId);
@@ -147,9 +147,6 @@ export default function DuelPage() {
   const matchRef = useRef<MatchData | null>(null);
   const processedRoundRef = useRef<number | null>(null);
 
-  // NOTE: refs must not be updated during render. They will be synced in effects below.
-
-  // ── Helper: Compute whose turn it is ──────────────────────────
   const getMyTurnInfo = useCallback(
     (round: number, matchData: MatchData | null) => {
       if (!matchData || matchData.match_type === "SOLO") {
@@ -206,7 +203,6 @@ export default function DuelPage() {
         setTimer((prev) => {
           if (prev <= 1) {
             stopTimer();
-            // Auto-submit timeout only if it's user's turn
             if (!hasAnsweredRef.current && !isSubmittingRef.current) {
               const q = currentQuestionRef.current;
               const m = matchRef.current;
@@ -253,10 +249,9 @@ export default function DuelPage() {
         });
       }, 1000);
     },
-    [stopTimer, getMyTurnInfo] // processRoundResultCallback is defined below via ref
+    [stopTimer, getMyTurnInfo]
   );
 
-  // We use a ref to avoid circular dependency
   const processRoundResultRef = useRef<
     | ((
         round: number,
@@ -274,9 +269,6 @@ export default function DuelPage() {
     | null
   >(null);
 
-  // `processRoundResultRef` will be called by timers / network callbacks.
-
-  // Load question and start timer
   const loadQuestion = useCallback(async () => {
     try {
       const res = await fetch(`/api/battle/match/${matchIdRef.current}/question`);
@@ -294,7 +286,6 @@ export default function DuelPage() {
         if (prev?.question.id === data.question.id && prev?.round === data.round) {
           return prev;
         }
-        // Reset state for new round
         setHasAnswered(false);
         setSelectedOption(null);
         isSubmittingRef.current = false;
@@ -306,7 +297,6 @@ export default function DuelPage() {
     }
   }, [startTimer, stopTimer]);
 
-  // Load match data
   const loadMatch = useCallback(async () => {
     try {
       const res = await fetch(`/api/battle/match/${matchIdRef.current}`);
@@ -335,7 +325,6 @@ export default function DuelPage() {
     }
   }, [stopTimer]);
 
-  // Process round result helper (idempotent per round)
   const processRoundResult = useCallback(
     (
       round: number,
@@ -350,7 +339,6 @@ export default function DuelPage() {
         status: "ONGOING" | "COMPLETED";
       }
     ) => {
-      // Prevent double processing of the same round
       if (processedRoundRef.current === round) return;
       processedRoundRef.current = round;
 
@@ -368,7 +356,6 @@ export default function DuelPage() {
         title = "WAKTU HABIS";
         subtitle = "Tidak ada poin diberikan pada ronde ini";
       } else if (matchRef.current && matchRef.current.match_type === "TEAM") {
-        // For TEAM matches, determine whether the answerer belongs to our team
         const myTeamMembers = matchRef.current.isPlayer1
           ? matchRef.current.team1Members
           : matchRef.current.team2Members;
@@ -388,7 +375,6 @@ export default function DuelPage() {
             subtitle = "Tim lawan mendapat +1 Poin";
           }
         } else {
-          // answered by opponent team
           if (data.isCorrect) {
             type = "too_slow";
             title = "KURANG CEPAT!";
@@ -400,17 +386,16 @@ export default function DuelPage() {
           }
         }
       } else {
-        // SOLO or fallback: mark based on whether the answerer is current user
         const isMe = data.answeredBy === currentUserId;
         if (isMe) {
           if (data.isCorrect) {
             type = "correct";
             title = "JAWABAN BENAR!";
-            subtitle = "+1 Poin untuk Tim Anda";
+            subtitle = "+1 Poin untuk Anda";
           } else {
             type = "wrong";
             title = "SALAH JAWAB!";
-            subtitle = "Tim lawan mendapat +1 Poin";
+            subtitle = "Lawan mendapat +1 Poin";
           }
         } else {
           if (data.isCorrect) {
@@ -420,12 +405,11 @@ export default function DuelPage() {
           } else {
             type = "opponent_wrong";
             title = "LAWAN SALAH JAWAB!";
-            subtitle = "+1 Poin gratis untuk Tim Anda";
+            subtitle = "+1 Poin gratis untuk Anda";
           }
         }
       }
 
-      // Update match scores instantly
       setMatch((prev) => {
         if (!prev) return prev;
         return {
@@ -436,7 +420,6 @@ export default function DuelPage() {
         };
       });
 
-      // Trigger 2-second Overlay
       setOverlayInfo({
         show: true,
         type,
@@ -460,7 +443,6 @@ export default function DuelPage() {
     [stopTimer, loadMatch, loadQuestion]
   );
 
-  // Keep refs in sync AFTER render to satisfy eslint/react-hooks/refs
   useEffect(() => {
     matchIdRef.current = matchId;
   }, [matchId]);
@@ -478,7 +460,6 @@ export default function DuelPage() {
     if (match?.userId) userIdRef.current = match.userId;
   }, [match]);
 
-  // Process any pending server responses coming from timeouts
   useEffect(() => {
     if (pendingRoundResult) {
       processRoundResult(pendingRoundResult.round, pendingRoundResult);
@@ -486,7 +467,6 @@ export default function DuelPage() {
     }
   }, [pendingRoundResult, processRoundResult]);
 
-  // Polling fallback loop every 1.5s
   useEffect(() => {
     if (!matchId || showResult) return;
 
@@ -525,14 +505,12 @@ export default function DuelPage() {
     return () => clearInterval(pollInterval);
   }, [matchId, showResult, overlayInfo.show, processRoundResult, loadMatch]);
 
-  // Submit answer
   const handleAnswer = async (option: string) => {
     if (!currentQuestion) return;
 
     const m = matchRef.current;
     const { isMyTurn } = getMyTurnInfo(currentQuestion.round, m);
 
-    // For TEAM: if not my turn, silently ignore
     if (!isMyTurn) return;
 
     if (hasAnsweredRef.current || isSubmittingRef.current) return;
@@ -560,7 +538,6 @@ export default function DuelPage() {
 
       if (!res.ok) {
         if (data?.alreadyAnswered || data?.notYourTurn) return;
-        // Roll back UI on other errors
         setHasAnswered(false);
         setSelectedOption(null);
         startTimer(q.time_limit || 30);
@@ -588,10 +565,7 @@ export default function DuelPage() {
     }
   };
 
-  // Pusher subscriptions
   useEffect(() => {
-    // subscribe only when match data is loaded to avoid race where events arrive
-    // before we know the current user's id / team membership
     if (!match || !matchId || !pusherClient) return;
 
     const channel = pusherClient.subscribe(`match-${matchId}`);
@@ -642,7 +616,6 @@ export default function DuelPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [match?.id, processRoundResult, loadMatch, stopTimer]);
 
-  // Initial load
   useEffect(() => {
     loadMatch();
     loadQuestion();
@@ -653,20 +626,19 @@ export default function DuelPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [matchId]);
 
-  // ── Derived: is it my turn? ────────────────────────────────────
   const turnInfo = currentQuestion
     ? getMyTurnInfo(currentQuestion.round, match)
     : { isMyTurn: true, currentAnswererName: null, currentAnswererId: null };
   const isTeam = match?.match_type === "TEAM";
 
   const getTimerColor = () => {
-    if (timer > 20) return "text-emerald-600";
+    if (timer > 20) return "text-blue-600";
     if (timer > 10) return "text-amber-500";
     return "text-red-600";
   };
 
   const getTimerBg = () => {
-    if (timer > 20) return "bg-emerald-50 border-emerald-200";
+    if (timer > 20) return "bg-blue-50 border-blue-200";
     if (timer > 10) return "bg-amber-50 border-amber-200";
     return "bg-red-50 border-red-200";
   };
@@ -723,7 +695,6 @@ export default function DuelPage() {
     );
   }
 
-  // ── Result Screen ──────────────────────────────────────────────
   if (showResult && resultData) {
     const fmt = (n: number) =>
       new Intl.NumberFormat("id-ID", {
@@ -807,7 +778,6 @@ export default function DuelPage() {
     );
   }
 
-  // ── Duel Screen ────────────────────────────────────────────────
   const isPlayer1 = match.isPlayer1;
   const myScore = isPlayer1 ? match.score1 : match.score2;
   const opponentScore = isPlayer1 ? match.score2 : match.score1;
@@ -815,14 +785,13 @@ export default function DuelPage() {
   const opponentName = isPlayer1 ? match.player2_name : match.player1_name;
   const myLevel = isPlayer1 ? match.player1_level : match.player2_level;
   const opponentLevel = isPlayer1 ? match.player2_level : match.player1_level;
+  const targetScore = match.target_score || 3;
 
-  // Team member lists
   const myTeamMembers = isPlayer1 ? match.team1Members : match.team2Members;
   const opponentTeamMembers = isPlayer1 ? match.team2Members : match.team1Members;
 
   return (
     <div className="space-y-4 max-w-lg mx-auto relative">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <button
           onClick={() => router.push("/sekretaris/battle")}
@@ -840,7 +809,6 @@ export default function DuelPage() {
             {isTeam ? "Team Battle" : "Solo Duel"} #{matchId.slice(0, 8)}
           </span>
         </div>
-        {/* Timer pill */}
         <div
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-mono font-bold ${getTimerBg()} ${getTimerColor()}`}
         >
@@ -849,10 +817,8 @@ export default function DuelPage() {
         </div>
       </div>
 
-      {/* Score Board */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
         <div className="flex items-center justify-between gap-2">
-          {/* Me / My Team */}
           <div className="flex items-center gap-2 min-w-0 flex-1">
             <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0 border border-blue-200">
               {isTeam ? (
@@ -867,7 +833,6 @@ export default function DuelPage() {
             </div>
           </div>
 
-          {/* Score */}
           <div className="text-center shrink-0 px-3 py-1 bg-slate-50 border border-slate-100 rounded-xl">
             <div className="flex items-center gap-2">
               <span
@@ -887,11 +852,10 @@ export default function DuelPage() {
               </span>
             </div>
             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wide">
-              First to 3
+              First to {targetScore}
             </p>
           </div>
 
-          {/* Opponent */}
           <div className="flex items-center gap-2 min-w-0 flex-1 justify-end">
             <div className="min-w-0 text-right">
               <p className="font-semibold text-slate-900 text-sm truncate">{opponentName}</p>
@@ -907,10 +871,8 @@ export default function DuelPage() {
           </div>
         </div>
 
-        {/* TEAM: Player lineup with turn indicator */}
         {isTeam && currentQuestion && (
           <div className="mt-3 pt-3 border-t border-slate-100 grid grid-cols-2 gap-2">
-            {/* My team lineup */}
             <div className="space-y-1">
               <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider">Tim Anda</p>
               {myTeamMembers.map((member, idx) => {
@@ -934,7 +896,6 @@ export default function DuelPage() {
                 );
               })}
             </div>
-            {/* Opponent team lineup */}
             <div className="space-y-1">
               <p className="text-[9px] font-mono font-bold text-slate-400 uppercase tracking-wider text-right">Tim Lawan</p>
               {opponentTeamMembers.map((member, idx) => {
@@ -959,7 +920,6 @@ export default function DuelPage() {
         )}
       </div>
 
-      {/* Turn Banner for TEAM */}
       {isTeam && currentQuestion && !hasAnswered && !overlayInfo.show && (
         <div
           className={`rounded-xl px-4 py-2.5 flex items-center gap-2 text-sm font-mono font-bold border ${
@@ -985,10 +945,8 @@ export default function DuelPage() {
         </div>
       )}
 
-      {/* Question Area & Overlay Container */}
       {currentQuestion ? (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-5 relative overflow-hidden min-h-[320px]">
-          {/* Round indicator */}
           <div className="flex items-center justify-between">
             <span className="text-xs font-mono font-bold text-slate-400 uppercase tracking-wider">
               Ronde {currentQuestion.round}
@@ -999,14 +957,12 @@ export default function DuelPage() {
             </span>
           </div>
 
-          {/* Question Text */}
           <div className="p-4 bg-slate-50 rounded-xl border border-slate-100">
             <p className="text-base font-medium text-slate-900 leading-relaxed">
               {currentQuestion.question.question}
             </p>
           </div>
 
-          {/* Options */}
           <div className="grid grid-cols-1 gap-2.5">
             {[
               { key: "A", value: currentQuestion.question.option_a },
@@ -1030,7 +986,6 @@ export default function DuelPage() {
             ))}
           </div>
 
-          {/* Overlay Penanda (Ronde Result Banner) */}
           {overlayInfo.show && (
             <div className="absolute inset-0 z-30 flex flex-col items-center justify-center p-6 bg-slate-950/85 backdrop-blur-md animate-in fade-in zoom-in-95 duration-200 text-center">
               {overlayInfo.type === "correct" ||

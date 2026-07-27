@@ -57,6 +57,7 @@ interface MatchData {
   money_change: number;
   team1Members: TeamMemberInfo[];
   team2Members: TeamMemberInfo[];
+  target_score: number;
 }
 
 interface MatchQuestion {
@@ -784,6 +785,7 @@ export default function DuelPage() {
   const opponentName = isPlayer1 ? match.player2_name : match.player1_name;
   const myLevel = isPlayer1 ? match.player1_level : match.player2_level;
   const opponentLevel = isPlayer1 ? match.player2_level : match.player1_level;
+  const targetScore = match.target_score || 3;
 
   const myTeamMembers = isPlayer1 ? match.team1Members : match.team2Members;
   const opponentTeamMembers = isPlayer1 ? match.team2Members : match.team1Members;
@@ -850,7 +852,7 @@ export default function DuelPage() {
               </span>
             </div>
             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wide">
-              First to 3
+              First to {targetScore}
             </p>
           </div>
 

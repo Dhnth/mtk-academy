@@ -355,7 +355,7 @@ export default function ProfileContent() {
       {/* Tabs */}
       <div className="flex border-b border-slate-200 overflow-x-auto">
         <button
-          onClick={() => router.push("/murid/profile?tab=profile")}
+          onClick={() => router.push("/sekretaris/profile?tab=profile")}
           className={`px-4 py-2 text-sm font-mono font-bold transition-colors border-b-2 whitespace-nowrap ${
             tab === "profile"
               ? "border-emerald-600 text-emerald-600"
@@ -366,7 +366,7 @@ export default function ProfileContent() {
           Profile
         </button>
         <button
-          onClick={() => router.push("/murid/profile?tab=stats")}
+          onClick={() => router.push("/sekretaris/profile?tab=stats")}
           className={`px-4 py-2 text-sm font-mono font-bold transition-colors border-b-2 whitespace-nowrap ${
             tab === "stats"
               ? "border-emerald-600 text-emerald-600"
@@ -377,7 +377,7 @@ export default function ProfileContent() {
           Statistik
         </button>
         <button
-          onClick={() => router.push("/murid/profile?tab=history")}
+          onClick={() => router.push("/sekretaris/profile?tab=history")}
           className={`px-4 py-2 text-sm font-mono font-bold transition-colors border-b-2 whitespace-nowrap ${
             tab === "history"
               ? "border-emerald-600 text-emerald-600"

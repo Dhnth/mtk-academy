@@ -139,7 +139,7 @@ export async function GET(
     // Style Header
     const headerStyle = {
       fill: { fgColor: { rgb: "2563EB" } },
-      font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11, name: "JetBrains Mono" },
+      font: { bold: true, color: { rgb: "FFFFFF" }, sz: 11, name: "Poppins" },
       alignment: { horizontal: "center", vertical: "center" },
       border: {
         top: { style: "thin", color: { rgb: "1E40AF" } },
@@ -171,7 +171,7 @@ export async function GET(
         const addr = XLSX.utils.encode_cell({ r, c });
         if (ws[addr]) {
           ws[addr].s = {
-            font: { sz: 10, name: "Inter" },
+            font: { sz: 10, name: "Poppins" },
             alignment: {
               horizontal: c === 0 ? "center" : "left",
               vertical: "center",
@@ -239,7 +239,7 @@ export async function GET(
       if (ws[addr]) {
         ws[addr].s = {
           fill: { fgColor: { rgb: "F3F4F6" } },
-          font: { bold: true, sz: 10, name: "JetBrains Mono", color: { rgb: "1F2937" } },
+          font: { bold: true, sz: 10, name: "Poppins", color: { rgb: "1F2937" } },
           alignment: { horizontal: c === 5 ? "right" : "center", vertical: "center" },
           border: {
             top: { style: "medium", color: { rgb: "9CA3AF" } },

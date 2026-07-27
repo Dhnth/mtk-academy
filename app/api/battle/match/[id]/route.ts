@@ -182,6 +182,10 @@ export async function GET(
         team2Members = t2Result.rows;
       }
 
+      // Hitung target_score berdasarkan level rata-rata
+      const avgLevel = Math.round((Number(match.player1_level || 1) + Number(match.player2_level || 1)) / 2);
+      const targetScore = 2 + avgLevel;
+
       return NextResponse.json({
         id: match.id,
         player1_id: match.player1_id,
@@ -205,6 +209,7 @@ export async function GET(
         money_change: moneyChange,
         team1Members,
         team2Members,
+        target_score: targetScore,
       });
     } catch (error) {
       console.error("Error fetching match:", error);

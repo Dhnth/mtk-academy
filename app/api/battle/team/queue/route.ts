@@ -41,7 +41,6 @@ export async function POST() {
     const userId = session.user.id;
 
     try {
-      // Cek apakah user berada di tim dan merupakan kapten
       const teamMembersResult = await query<TeamMemberRow>(
         `SELECT tm.team_id, t.captain_id, t.name, t.status 
          FROM team_members tm 
@@ -75,7 +74,6 @@ export async function POST() {
         );
       }
 
-      // Cek apakah sudah terdaftar di queue
       const existingQueueResult = await query<QueueRow>(
         "SELECT id FROM team_queue WHERE team_id = $1",
         [teamId]
@@ -88,7 +86,6 @@ export async function POST() {
         );
       }
 
-      // Dapatkan level rata-rata anggota tim
       const levelsResult = await query<LevelRow>(
         `SELECT AVG(u.level) as avg_level 
          FROM team_members tm 
@@ -100,7 +97,6 @@ export async function POST() {
       const levelData = getFirstRow(levelsResult);
       const avgLevel = Math.round(Number(levelData?.avg_level || 1));
 
-      // Cari tim lawan dengan level rata-rata yang sama (±1)
       const opponentsResult = await query<OpponentRow>(
         `SELECT tq.team_id, tq.avg_level 
          FROM team_queue tq
@@ -114,12 +110,10 @@ export async function POST() {
       );
 
       if (opponentsResult.rows.length > 0) {
-        // Dapatkan tim lawan!
         const opponent = opponentsResult.rows[0];
         const opponentTeamId = opponent.team_id;
         const opponentAvgLevel = Number(opponent.avg_level || 1);
 
-        // Buat match baru (TEAM)
         const matchId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
         await query(
           `INSERT INTO matches (id, player1_id, player2_id, match_type, status) 
@@ -127,8 +121,10 @@ export async function POST() {
           [matchId, teamId, opponentTeamId]
         );
 
-        // Cari soal pertama (round 1)
         const matchAvgLevel = Math.round((avgLevel + opponentAvgLevel) / 2);
+        // Hitung time limit untuk match
+        const timeLimit = 30 + (matchAvgLevel - 1) * 5;
+
         const questionsResult = await query<QuestionRow>(
           `SELECT id FROM questions WHERE level = $1 ORDER BY RANDOM() LIMIT 1`,
           [matchAvgLevel]
@@ -150,24 +146,21 @@ export async function POST() {
           const mqId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
           await query(
             `INSERT INTO match_questions (id, match_id, question_id, round, player1_answer, player2_answer, player1_time, player2_time, time_limit) 
-             VALUES ($1, $2, $3, 1, NULL, NULL, NULL, NULL, 30)`,
-            [mqId, matchId, questionId]
+             VALUES ($1, $2, $3, 1, NULL, NULL, NULL, NULL, $4)`,
+            [mqId, matchId, questionId, timeLimit]
           );
         }
 
-        // Hapus lawan dari queue
         await query(
           "DELETE FROM team_queue WHERE team_id = $1",
           [opponentTeamId]
         );
 
-        // Update status kedua tim menjadi IN_BATTLE
         await query(
           "UPDATE teams SET status = 'IN_BATTLE' WHERE id IN ($1, $2)",
           [teamId, opponentTeamId]
         );
 
-        // Trigger event ke kedua tim
         await pusherServer.trigger(`team-${teamId}`, "match-found", { matchId });
         await pusherServer.trigger(`team-${opponentTeamId}`, "match-found", { matchId });
 
@@ -178,20 +171,17 @@ export async function POST() {
         });
       }
 
-      // Tidak ada lawan, masuk antrian
       const queueId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString();
       await query(
         "INSERT INTO team_queue (id, team_id, avg_level) VALUES ($1, $2, $3)",
         [queueId, teamId, avgLevel]
       );
 
-      // Update status tim menjadi MATCHMAKING
       await query(
         "UPDATE teams SET status = 'MATCHMAKING' WHERE id = $1",
         [teamId]
       );
 
-      // Trigger event matchmaking started ke anggota tim
       await pusherServer.trigger(`team-${teamId}`, "matchmaking-started", { teamId });
 
       return NextResponse.json({

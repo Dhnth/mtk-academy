@@ -6,9 +6,25 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
-  max: 20,
+  max: 10, // Kurangi dari 20 jadi 10
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 2000,
+  connectionTimeoutMillis: 5000, // Naikkan dari 2000 jadi 5000
+  // Tambahkan timeout untuk query
+  statement_timeout: 10000, // 10 detik
+  query_timeout: 10000,
+});
+
+// Event listeners untuk monitoring
+pool.on('error', (err) => {
+  console.error('❌ Unexpected pool error:', err.message);
+});
+
+pool.on('connect', () => {
+  console.log('🔌 New client connected to database');
+});
+
+pool.on('remove', () => {
+  console.log('🔌 Client removed from pool');
 });
 
 // Test connection
@@ -23,18 +39,39 @@ pool.connect((err: Error | undefined) => {
 // Type untuk parameter query
 type QueryParams = (string | number | boolean | null | undefined)[];
 
-// Generic query function dengan tipe generik yang benar
+// Generic query function dengan retry logic
 export async function query<T extends QueryResultRow = QueryResultRow>(
   sql: string,
-  params: QueryParams = []
+  params: QueryParams = [],
+  retries: number = 2
 ): Promise<QueryResult<T>> {
-  const client = await pool.connect();
-  try {
-    const result = await client.query<T>(sql, params);
-    return result;
-  } finally {
-    client.release();
+  let lastError: Error | null = null;
+  
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    const client = await pool.connect();
+    try {
+      const result = await client.query<T>(sql, params);
+      return result;
+    } catch (error) {
+      lastError = error as Error;
+      console.error(`❌ Query attempt ${attempt + 1} failed:`, error);
+      
+      // Jika error connection, coba lagi
+      if (error instanceof Error && 
+          (error.message.includes('Connection terminated') || 
+           error.message.includes('timeout') ||
+           error.message.includes('Connection timed out'))) {
+        // Tunggu sebentar sebelum retry
+        await new Promise(resolve => setTimeout(resolve, 500 * (attempt + 1)));
+        continue;
+      }
+      throw error;
+    } finally {
+      client.release();
+    }
   }
+  
+  throw lastError || new Error('Query failed after retries');
 }
 
 // Untuk mendapatkan connection (jika perlu transaksi)
@@ -60,4 +97,10 @@ export function getFirstRow<T extends QueryResultRow = QueryResultRow>(
 
 export function getRowCount(result: QueryResult): number {
   return result.rowCount || 0;
+}
+
+// Fungsi untuk close pool (berguna saat shutdown)
+export async function closePool() {
+  await pool.end();
+  console.log('📦 Database pool closed');
 }

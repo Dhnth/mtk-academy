@@ -28,6 +28,15 @@
     --destructive: #ef4444;
     --destructive-foreground: #ffffff;
   }
+
+    * {
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE/Edge */
+  }
+  
+  *::-webkit-scrollbar {
+    display: none; /* Chrome/Safari/Opera */
+  }
 }
 
 /* Custom Theme Mapping untuk Tailwind v4 */

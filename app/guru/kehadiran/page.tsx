@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from "react";
+import { toast } from "sonner";
 import {
   RefreshCw,
   AlertCircle,
@@ -15,6 +16,8 @@ import {
   Search,
   ChevronDown,
   ChevronUp,
+  FileSpreadsheet,
+  Loader2,
 } from "lucide-react";
 
 interface AttendanceData {
@@ -52,6 +55,7 @@ export default function GuruKehadiranPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
+  const [exporting, setExporting] = useState<string | null>(null);
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
@@ -65,7 +69,6 @@ export default function GuruKehadiranPage() {
       const data = await res.json();
       setAttendance(data);
 
-      // Hitung summary global
       const summaryData: AttendanceSummary = {
         total: data.length,
         hadir: data.filter((a: AttendanceData) => a.status === "HADIR").length,
@@ -76,7 +79,6 @@ export default function GuruKehadiranPage() {
       };
       setSummary(summaryData);
 
-      // Group by class
       const groups: Record<string, ClassGroup> = {};
       data.forEach((item: AttendanceData) => {
         if (!groups[item.class_id]) {
@@ -88,7 +90,6 @@ export default function GuruKehadiranPage() {
           };
         }
         groups[item.class_id].students.push(item);
-        // Update class summary
         const cls = groups[item.class_id];
         cls.summary.total++;
         if (item.status === "HADIR") cls.summary.hadir++;
@@ -101,7 +102,6 @@ export default function GuruKehadiranPage() {
       const groupList = Object.values(groups);
       setClassGroups(groupList);
 
-      // Auto expand all classes
       const allClassIds = new Set(groupList.map(g => g.classId));
       setExpandedClasses(allClassIds);
     } catch (err) {
@@ -116,7 +116,54 @@ export default function GuruKehadiranPage() {
     fetchAttendance();
   }, [fetchAttendance]);
 
-  // Filter attendance by search
+  const handleExport = async (classId: string, className: string) => {
+    setExporting(classId);
+    const toastId = toast.loading(`Mengexport data ${className}...`);
+    
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const response = await fetch(
+        `/api/guru/attendance/export/${classId}?date=${today}`
+      );
+
+      if (!response.ok) {
+        let errorMessage = "Gagal mengexport data";
+        try {
+          const errorData = await response.json();
+          errorMessage = errorData.error || errorMessage;
+        } catch {
+          // If response is not JSON (like HTML error page)
+          errorMessage = `Gagal mengexport data (HTTP ${response.status})`;
+        }
+        throw new Error(errorMessage);
+      }
+
+      // Download file
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `Rekap_Kehadiran_${className}_${today}.xlsx`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+
+      toast.success(`Berhasil mengexport data ${className}`, {
+        id: toastId,
+        icon: <CheckCircle className="w-4 h-4 text-emerald-600" />,
+      });
+    } catch (err) {
+      console.error("Error exporting:", err);
+      toast.error(err instanceof Error ? err.message : "Gagal mengexport data", {
+        id: toastId,
+        icon: <XCircle className="w-4 h-4 text-red-600" />,
+      });
+    } finally {
+      setExporting(null);
+    }
+  };
+
   const filteredGroups = classGroups
     .map((group) => ({
       ...group,
@@ -191,7 +238,6 @@ export default function GuruKehadiranPage() {
     }).format(date);
   };
 
-  // Loading skeleton
   if (loading) {
     return (
       <div className="space-y-6 animate-pulse">
@@ -223,7 +269,6 @@ export default function GuruKehadiranPage() {
     );
   }
 
-  // Error state
   if (error) {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
@@ -244,7 +289,6 @@ export default function GuruKehadiranPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className="font-mono text-xl sm:text-2xl font-bold text-slate-900">
@@ -264,7 +308,6 @@ export default function GuruKehadiranPage() {
         </button>
       </div>
 
-      {/* Date Info */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
         <Calendar className="w-5 h-5 text-blue-600" />
         <span className="font-mono text-sm font-bold text-slate-900">
@@ -280,7 +323,6 @@ export default function GuruKehadiranPage() {
         )}
       </div>
 
-      {/* No Data State */}
       {!hasData ? (
         <div className="flex flex-col items-center justify-center py-16 px-4 bg-white border border-slate-200 rounded-2xl">
           <Users className="w-16 h-16 text-slate-300 mb-4" />
@@ -294,7 +336,6 @@ export default function GuruKehadiranPage() {
         </div>
       ) : (
         <>
-          {/* Summary Cards */}
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
             <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 text-center">
               <CheckCircle className="w-5 h-5 text-emerald-600 mx-auto" />
@@ -333,7 +374,6 @@ export default function GuruKehadiranPage() {
             </div>
           </div>
 
-          {/* Search */}
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
@@ -345,7 +385,6 @@ export default function GuruKehadiranPage() {
             />
           </div>
 
-          {/* Class Groups */}
           <div className="space-y-4">
             {filteredGroups.length === 0 ? (
               <div className="bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500">
@@ -364,18 +403,17 @@ export default function GuruKehadiranPage() {
                     key={group.classId}
                     className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs"
                   >
-                    {/* Class Header */}
-                    <button
-                      onClick={() => toggleExpand(group.classId)}
-                      className="w-full px-4 py-3 bg-slate-50/80 hover:bg-slate-50 transition-colors flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-full px-4 py-3 bg-slate-50/80 flex items-center justify-between">
+                      <div 
+                        className="flex items-center gap-3 min-w-0 cursor-pointer flex-1"
+                        onClick={() => toggleExpand(group.classId)}
+                      >
                         <Building2 className="w-5 h-5 text-blue-600 shrink-0" />
                         <div className="min-w-0">
                           <h3 className="font-mono font-bold text-sm text-slate-900 truncate">
                             {group.className}
                           </h3>
-                          <div className="flex items-center gap-2 mt-0.5">
+                          <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-[10px] font-mono text-slate-500">
                               {group.students.length} karyawan
                             </span>
@@ -393,18 +431,40 @@ export default function GuruKehadiranPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-2 shrink-0">
-                        <span className="text-[10px] font-mono text-slate-400">
-                          {isExpanded ? "Tutup" : "Buka"}
-                        </span>
-                        {isExpanded ? (
-                          <ChevronUp className="w-4 h-4 text-slate-400" />
-                        ) : (
-                          <ChevronDown className="w-4 h-4 text-slate-400" />
-                        )}
+                        <button
+                          onClick={() => handleExport(group.classId, group.className)}
+                          disabled={exporting === group.classId}
+                          className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white rounded-lg text-xs font-mono font-medium flex items-center gap-1.5 transition-colors"
+                          title="Export rekap kehadiran ke Excel"
+                        >
+                          {exporting === group.classId ? (
+                            <>
+                              <Loader2 className="w-3 h-3 animate-spin" />
+                              <span>Export...</span>
+                            </>
+                          ) : (
+                            <>
+                              <FileSpreadsheet className="w-3 h-3" />
+                              <span>Export</span>
+                            </>
+                          )}
+                        </button>
+                        <button
+                          onClick={() => toggleExpand(group.classId)}
+                          className="flex items-center gap-2 hover:bg-slate-100 px-2 py-1 rounded-lg transition-colors"
+                        >
+                          <span className="text-[10px] font-mono text-slate-400">
+                            {isExpanded ? "Tutup" : "Buka"}
+                          </span>
+                          {isExpanded ? (
+                            <ChevronUp className="w-4 h-4 text-slate-400" />
+                          ) : (
+                            <ChevronDown className="w-4 h-4 text-slate-400" />
+                          )}
+                        </button>
                       </div>
-                    </button>
+                    </div>
 
-                    {/* Students List */}
                     {isExpanded && (
                       <div className="divide-y divide-slate-100">
                         {group.students.map((item) => (
