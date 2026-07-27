@@ -463,30 +463,6 @@ export default function GuruPage() {
             </div>
           </div>
 
-          {/* Agenda & Pengumuman */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-2xs space-y-3">
-            <h3 className="font-mono text-base font-bold text-slate-900 mb-2">
-              Agenda Akademik
-            </h3>
-            <div className="p-3 bg-blue-50 border border-blue-100 rounded-xl flex items-start gap-2.5">
-              <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-              <div className="text-xs">
-                <p className="font-bold text-blue-900">Pembaruan Modul</p>
-                <p className="text-blue-700 text-[11px] mt-0.5">
-                  Modul Kalkulus II akan dirilis malam ini.
-                </p>
-              </div>
-            </div>
-            <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl flex items-start gap-2.5">
-              <Calendar className="w-4 h-4 text-slate-600 shrink-0 mt-0.5" />
-              <div className="text-xs">
-                <p className="font-bold text-slate-900">Evaluasi Pekanan</p>
-                <p className="text-slate-500 text-[11px] mt-0.5">
-                  Jumat, 24 April 2026 — Rekapitulasi token bulanan.
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </div>
     </div>

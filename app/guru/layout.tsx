@@ -10,6 +10,7 @@ import {
   BookOpen,
   LogOut,
   CalendarCheck,
+  Trophy,
 } from "lucide-react";
 
 export default function GuruLayout({
@@ -33,13 +34,19 @@ export default function GuruLayout({
       exact: false,
     },
     {
+      label: "Hall Of Fame",
+      href: "/guru/hall-of-fame",
+      icon: Trophy,
+      exact: false,
+    },
+    {
       label: "Kehadiran",
       href: "/guru/kehadiran",
       icon: CalendarCheck,
       exact: false,
     },
     {
-      label: "Latihan Soal",
+      label: "Soal",
       href: "/guru/latihan-soal",
       icon: BookOpen,
       exact: false,
@@ -50,9 +57,6 @@ export default function GuruLayout({
     if (item.exact) return pathname === item.href;
     return pathname.startsWith(item.href);
   };
-
-  // Grid columns based on number of items
-  const gridCols = navItems.length <= 3 ? 3 : 4;
 
   return (
     <div className="bg-slate-50 text-slate-900 font-sans min-h-screen pb-20 md:pb-24">
@@ -65,10 +69,10 @@ export default function GuruLayout({
             </div>
             <div>
               <h1 className="font-mono text-base sm:text-lg font-bold tracking-tight text-blue-700 uppercase leading-none">
-                MATH WARFARE
+                MTK Academy
               </h1>
               <span className="text-[10px] font-mono text-slate-500 tracking-wider">
-                PANEL GURU
+                Guru
               </span>
             </div>
           </div>
@@ -91,7 +95,7 @@ export default function GuruLayout({
 
       {/* Bottom Navigation Bar (Mobile First) */}
       <nav className="fixed bottom-0 left-0 right-0 z-50 bg-white/95 backdrop-blur-md border-t border-slate-200 shadow-lg">
-        <div className={`max-w-md mx-auto grid grid-cols-${gridCols} h-16 px-2`}>
+        <div className="max-w-md mx-auto grid grid-cols-5 h-16 px-2">
           {navItems.map((item) => {
             const active = isActive(item);
             const Icon = item.icon;
@@ -99,10 +103,10 @@ export default function GuruLayout({
               <Link
                 key={item.href}
                 href={item.href}
-                className={`flex flex-col items-center justify-center gap-1 transition-all ${
+                className={`flex flex-col items-center justify-center gap-0.5 transition-all ${
                   active
                     ? "text-blue-600 font-bold"
-                    : "text-slate-500 hover:text-slate-800 font-medium"
+                    : "text-slate-500 hover:text-slate-800"
                 }`}
               >
                 <div
@@ -114,9 +118,11 @@ export default function GuruLayout({
                     className={`w-5 h-5 ${active ? "stroke-[2.5]" : "stroke-[1.75]"}`}
                   />
                 </div>
-                <span className="text-[11px] font-mono tracking-tight">
-                  {item.label}
-                </span>
+                {active && (
+                  <span className="text-[9px] font-mono tracking-tight leading-none">
+                    {item.label}
+                  </span>
+                )}
               </Link>
             );
           })}

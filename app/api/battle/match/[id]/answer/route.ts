@@ -394,6 +394,7 @@ async function endMatch(
 }
 
 // Helper: Update user stats and rewards
+// Helper: Update user stats and rewards
 async function updateUserStats(
   matchId: string,
   player1Id: string,
@@ -403,8 +404,8 @@ async function updateUserStats(
 ) {
   const expWin = 35;
   const expLose = -15;
-  const moneyWin = 10000000;
-  const moneyLose = -5000000;
+  const moneyWin = 10000000;      // +10jt untuk winner
+  const moneyLose = -5000000;     // -5jt untuk loser (akan diproses)
 
   let winners: string[] = [];
   let losers: string[] = [];
@@ -413,6 +414,7 @@ async function updateUserStats(
     winners = [winnerId];
     losers = [winnerId === player1Id ? player2Id : player1Id];
   } else {
+    // Team match
     const winMembersResult = await query<{ user_id: string }>(
       "SELECT user_id FROM team_members WHERE team_id = $1",
       [winnerId]
@@ -427,7 +429,7 @@ async function updateUserStats(
     losers = loseMembersResult.rows.map((m) => m.user_id);
   }
 
-  // Update winners
+  // UPDATE WINNERS
   for (const wId of winners) {
     await query(
       `UPDATE users SET wins = wins + 1, exp = exp + $1, income = income + $2 WHERE id = $3`,
@@ -442,27 +444,41 @@ async function updateUserStats(
     );
   }
 
-  // Update losers
+  // UPDATE LOSERS - DENGAN LOGIC YANG BENAR
   for (const lId of losers) {
-    const loserDataResult = await query<UserData>(
+    // Ambil data user saat ini
+    const loserDataResult = await query<{ income: number; expense: number }>(
       "SELECT income, expense FROM users WHERE id = $1",
       [lId]
     );
     const loserData = getFirstRow(loserDataResult);
 
-    let income = Number(loserData?.income || 0);
-    let expense = Number(loserData?.expense || 0);
-    const currentBalance = income - expense;
-    const deductionAmount = Math.abs(moneyLose);
+    const currentIncome = Number(loserData?.income || 0);
+    const currentExpense = Number(loserData?.expense || 0);
+    const currentBalance = currentIncome - currentExpense;
+    const deductionAmount = Math.abs(moneyLose); // 5.000.000
 
+    let newIncome = currentIncome;
+    let newExpense = currentExpense;
+
+    // LOGIC YANG BENAR:
+    // 1. Kurangi INCOME (saldo) dulu
+    // 2. Jika income habis, sisanya masuk ke EXPENSE
     if (currentBalance >= deductionAmount) {
-      income = income - deductionAmount;
+      // Jika saldo cukup, kurangi income saja
+      newIncome = currentIncome - deductionAmount;
+      // expense tetap
     } else {
-      income = 0;
+      // Jika saldo tidak cukup
+      // 1. Habiskan income (jadikan 0)
+      newIncome = 0;
+      // 2. Sisa yang harus dibayar = deductionAmount - currentBalance
       const remaining = deductionAmount - currentBalance;
-      expense = expense + remaining;
+      // 3. Tambahkan sisa ke expense
+      newExpense = currentExpense + remaining;
     }
 
+    // Update user
     await query(
       `UPDATE users SET 
         losses = losses + 1, 
@@ -470,7 +486,7 @@ async function updateUserStats(
         income = $2, 
         expense = $3 
       WHERE id = $4`,
-      [expLose, income, expense, lId]
+      [expLose, newIncome, newExpense, lId]
     );
 
     const rewardId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random().toString();
@@ -520,7 +536,7 @@ async function loadNextQuestion(matchId: string) {
   }
 
   const questionsResult = await query<{ id: string }>(
-    `SELECT id FROM questions WHERE level = $1 ORDER BY RAND() LIMIT 1`,
+    `SELECT id FROM questions WHERE level = $1 ORDER BY RANDOM() LIMIT 1`,
     [avgLevel]
   );
 
@@ -529,7 +545,7 @@ async function loadNextQuestion(matchId: string) {
     questionId = questionsResult.rows[0].id;
   } else {
     const fallbackResult = await query<{ id: string }>(
-      `SELECT id FROM questions WHERE level = 1 ORDER BY RAND() LIMIT 1`
+      `SELECT id FROM questions WHERE level = 1 ORDER BY RANDOM() LIMIT 1`
     );
     if (fallbackResult.rows.length > 0) {
       questionId = fallbackResult.rows[0].id;

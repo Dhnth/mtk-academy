@@ -45,7 +45,6 @@ interface UserProfile {
   level: number;
 }
 
-// Type untuk Pusher
 interface PusherChannel {
   bind: (event: string, callback: (data: unknown) => void) => void;
   unbind_all: () => void;
@@ -93,7 +92,7 @@ export default function TeamLobbyPage() {
       const res = await fetch("/api/battle/team/my");
       if (!res.ok) {
         if (res.status === 404) {
-          router.push("/sekretaris/battle");
+          router.push("/murid/battle");
           return;
         }
         throw new Error("Gagal memuat data tim");
@@ -101,22 +100,20 @@ export default function TeamLobbyPage() {
       const data = await res.json();
       if (!data || data.id !== teamId) {
         if (data) {
-          router.replace(`/sekretaris/battle/team/${data.id}`);
+          router.replace(`/murid/battle/team/${data.id}`);
         } else {
-          router.replace("/sekretaris/battle");
+          router.replace("/murid/battle");
         }
         return;
       }
       
-      // Auto-redirect if already matchmaking
       if (data.status === "MATCHMAKING") {
-        window.location.href = `/sekretaris/battle/team/${teamId}/match`;
+        window.location.href = `/murid/battle/team/${teamId}/match`;
         return;
       }
 
-      // Auto-redirect if already in battle
       if (data.status === "IN_BATTLE" && data.active_match_id) {
-        window.location.href = `/sekretaris/battle/duel/${data.active_match_id}`;
+        window.location.href = `/murid/battle/duel/${data.active_match_id}`;
         return;
       }
 
@@ -128,8 +125,6 @@ export default function TeamLobbyPage() {
     }
   }, [teamId, router]);
 
-  // First, load team data. Subscriptions start after team is loaded and when
-  // pusher connection is established to avoid missing events or race conditions.
   useEffect(() => {
     fetchTeamData();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -150,16 +145,16 @@ export default function TeamLobbyPage() {
         });
 
         channel.bind("team-disband", () => {
-          router.replace("/sekretaris/battle?autoRefresh=1");
+          router.replace("/murid/battle?autoRefresh=1");
         });
 
         channel.bind("matchmaking-started", () => {
-          window.location.href = `/sekretaris/battle/team/${team.id}/match`;
+          window.location.href = `/murid/battle/team/${team.id}/match`;
         });
 
         channel.bind("match-found", (data: unknown) => {
           const matchData = data as { matchId: string };
-          window.location.href = `/sekretaris/battle/duel/${matchData.matchId}`;
+          window.location.href = `/murid/battle/duel/${matchData.matchId}`;
         });
       } catch {
         // Error handling
@@ -173,7 +168,6 @@ export default function TeamLobbyPage() {
       } else {
         connectedHandler = () => {
           subscribe();
-          // unbind after first connect
           try {
             (pusherClient as PusherClient).connection.unbind("connected", connectedHandler as () => void);
           } catch {
@@ -183,7 +177,6 @@ export default function TeamLobbyPage() {
         (pusherClient as PusherClient).connection.bind("connected", connectedHandler);
       }
     } catch {
-      // fallback: try subscribing immediately
       subscribe();
     }
 
@@ -204,7 +197,6 @@ export default function TeamLobbyPage() {
         // Error handling
       }
     };
-    // fetchTeamData intentionally excluded to avoid re-subscribing during fetch
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [team?.id]);
 
@@ -226,7 +218,7 @@ export default function TeamLobbyPage() {
         setModal({ type: "error", message: data.error || "Gagal membubarkan tim" });
         return;
       }
-      router.replace("/sekretaris/battle?autoRefresh=1");
+      router.replace("/murid/battle?autoRefresh=1");
     } catch {
       setModal({ type: "error", message: "Terjadi kesalahan saat membubarkan tim" });
     } finally {
@@ -244,7 +236,7 @@ export default function TeamLobbyPage() {
         setModal({ type: "error", message: data.error || "Gagal keluar dari tim" });
         return;
       }
-      router.replace("/sekretaris/battle?autoRefresh=1");
+      router.replace("/murid/battle?autoRefresh=1");
     } catch {
       setModal({ type: "error", message: "Terjadi kesalahan saat keluar dari tim" });
     } finally {
@@ -252,68 +244,64 @@ export default function TeamLobbyPage() {
     }
   };
 
-const handleStartMatchmaking = async () => {
-  setActionLoading(true);
-  setModal(null);
-  
-  try {
-    const res = await fetch("/api/battle/team/queue", { 
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-    });
+  const handleStartMatchmaking = async () => {
+    setActionLoading(true);
+    setModal(null);
     
-    const data = await res.json();
+    try {
+      const res = await fetch("/api/battle/team/queue", { 
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+      });
+      
+      const data = await res.json();
 
-    if (!res.ok) {
-      console.error("Matchmaking error response:", data);
+      if (!res.ok) {
+        console.error("Matchmaking error response:", data);
+        setModal({ 
+          type: "error", 
+          message: data.error || "Gagal memulai matchmaking" 
+        });
+        setActionLoading(false);
+        return;
+      }
+
+      console.log("Matchmaking success:", data);
+
+      if (data.matchId) {
+        window.location.href = `/murid/battle/duel/${data.matchId}`;
+      } else if (data.teamId) {
+        window.location.href = `/murid/battle/team/${data.teamId}/match`;
+      } else {
+        window.location.href = `/murid/battle/team/${teamId}/match`;
+      }
+    } catch (err) {
+      console.error("Error starting matchmaking:", err);
       setModal({ 
         type: "error", 
-        message: data.error || "Gagal memulai matchmaking" 
+        message: err instanceof Error ? err.message : "Terjadi kesalahan saat memulai matchmaking" 
       });
       setActionLoading(false);
-      return;
     }
+  };
 
-    console.log("✅ Matchmaking success:", data);
-
-    // Redirect berdasarkan response
-    if (data.matchId) {
-      // Langsung dapat lawan
-      window.location.href = `/sekretaris/battle/duel/${data.matchId}`;
-    } else if (data.teamId) {
-      // Masuk antrian
-      window.location.href = `/sekretaris/battle/team/${data.teamId}/match`;
+  const onStartClick = () => {
+    if (!team) return;
+    console.log("Team members count:", team.members.length);
+    
+    if (team.members.length < 4) {
+      console.log("Team not full, showing confirm modal");
+      setModal({ type: "confirm_start" });
     } else {
-      // Fallback
-      window.location.href = `/sekretaris/battle/team/${teamId}/match`;
+      console.log("Team full, starting matchmaking");
+      handleStartMatchmaking();
     }
-  } catch (err) {
-    console.error("Error starting matchmaking:", err);
-    setModal({ 
-      type: "error", 
-      message: err instanceof Error ? err.message : "Terjadi kesalahan saat memulai matchmaking" 
-    });
-    setActionLoading(false);
-  }
-};
-
-const onStartClick = () => {
-  if (!team) return;
-  console.log("Team members count:", team.members.length);
-  
-  if (team.members.length < 4) {
-    console.log("Team not full, showing confirm modal");
-    setModal({ type: "confirm_start" });
-  } else {
-    console.log("Team full, starting matchmaking");
-    handleStartMatchmaking();
-  }
-};
+  };
 
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <RefreshCw className="w-8 h-8 text-purple-600 animate-spin" />
+        <RefreshCw className="w-8 h-8 text-emerald-600 animate-spin" />
       </div>
     );
   }
@@ -325,8 +313,8 @@ const onStartClick = () => {
         <h3 className="text-xl font-bold text-slate-900 mb-2">Gagal Memuat Tim</h3>
         <p className="text-slate-500 text-center">{error || "Tim tidak ditemukan"}</p>
         <button
-          onClick={() => router.push("/sekretaris/battle")}
-          className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-mono text-sm font-bold"
+          onClick={() => router.push("/murid/battle")}
+          className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors font-mono text-sm font-bold"
         >
           Kembali ke Battle
         </button>
@@ -343,42 +331,39 @@ const onStartClick = () => {
 
   return (
     <div className="space-y-6 max-w-md mx-auto">
-      {/* Back Button */}
       <button
-        onClick={() => router.push("/sekretaris/battle")}
+        onClick={() => router.push("/murid/battle")}
         className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 transition-colors"
       >
         <ArrowLeft className="w-4 h-4" />
         Kembali ke Battle
       </button>
 
-      {/* Header */}
       <div className="text-center">
-        <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-purple-200">
-          <Users className="w-8 h-8 text-purple-600" />
+        <div className="w-16 h-16 bg-emerald-100 rounded-2xl flex items-center justify-center mx-auto mb-3 border border-emerald-200">
+          <Users className="w-8 h-8 text-emerald-600" />
         </div>
         <h2 className="font-mono text-2xl font-bold text-slate-900 leading-tight">
           Lobby Tim
         </h2>
-        <p className="text-purple-700 font-bold text-lg mt-1 font-mono">
+        <p className="text-emerald-700 font-bold text-lg mt-1 font-mono">
           {team.name}
         </p>
       </div>
 
-      {/* Team Code Info */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
         <div className="flex items-center justify-between">
           <div>
             <p className="text-[10px] font-mono text-slate-400 uppercase tracking-wider">
               Kode Tim (Bagikan ke Teman)
             </p>
-            <p className="text-xl font-bold font-mono text-purple-600 tracking-widest mt-0.5">
+            <p className="text-xl font-bold font-mono text-emerald-600 tracking-widest mt-0.5">
               {team.code}
             </p>
           </div>
           <button
             onClick={copyTeamCode}
-            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-purple-600 transition-all flex items-center gap-1.5 text-xs font-mono font-semibold"
+            className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 hover:text-emerald-600 transition-all flex items-center gap-1.5 text-xs font-mono font-semibold"
             title="Salin Kode"
           >
             {copied ? (
@@ -396,7 +381,6 @@ const onStartClick = () => {
         </div>
       </div>
 
-      {/* Members list */}
       <div className="space-y-3">
         <div className="flex justify-between items-center px-1">
           <span className="text-xs font-mono font-bold text-slate-500 uppercase tracking-wider">
@@ -418,7 +402,7 @@ const onStartClick = () => {
                     <div
                       className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                         memberIsCaptain
-                          ? "bg-purple-100 text-purple-600"
+                          ? "bg-emerald-100 text-emerald-600"
                           : "bg-slate-100 text-slate-600"
                       }`}
                     >
@@ -463,14 +447,13 @@ const onStartClick = () => {
         </div>
       </div>
 
-      {/* Buttons */}
       <div className="space-y-3 pt-2">
         {isCaptain ? (
           <>
             <button
               onClick={onStartClick}
               disabled={actionLoading}
-              className="w-full py-3 bg-purple-600 hover:bg-purple-700 text-white rounded-xl font-mono text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
+              className="w-full py-3 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-mono text-sm font-bold transition-all disabled:opacity-50 flex items-center justify-center gap-2 shadow-sm cursor-pointer"
             >
               {actionLoading ? (
                 <RefreshCw className="w-4 h-4 animate-spin" />
@@ -507,9 +490,6 @@ const onStartClick = () => {
         )}
       </div>
 
-      {/* ── MODALS ─────────────────────────────────────────────── */}
-
-      {/* Confirm Disband */}
       {modal?.type === "confirm_disband" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-100">
@@ -549,7 +529,6 @@ const onStartClick = () => {
         </div>
       )}
 
-      {/* Confirm Leave */}
       {modal?.type === "confirm_leave" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-100">
@@ -588,7 +567,6 @@ const onStartClick = () => {
         </div>
       )}
 
-      {/* Confirm Start (incomplete team) */}
       {modal?.type === "confirm_start" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-100">
@@ -606,7 +584,7 @@ const onStartClick = () => {
             </div>
             <p className="text-sm text-slate-600 mb-5 leading-relaxed">
               Jumlah anggota tim Anda saat ini baru{" "}
-              <span className="font-bold text-purple-700">
+              <span className="font-bold text-emerald-700">
                 {team.members.length}/4 orang
               </span>
               . Apakah Anda yakin ingin memulai matchmaking dengan anggota yang ada?
@@ -621,7 +599,7 @@ const onStartClick = () => {
               <button
                 onClick={handleStartMatchmaking}
                 disabled={actionLoading}
-                className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-mono text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5"
+                className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-mono text-sm font-bold cursor-pointer flex items-center justify-center gap-1.5"
               >
                 {actionLoading ? (
                   <RefreshCw className="w-4 h-4 animate-spin" />
@@ -634,7 +612,6 @@ const onStartClick = () => {
         </div>
       )}
 
-      {/* Tim Dibubarkan */}
       {modal?.type === "disbanded" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-100 text-center">
@@ -648,7 +625,7 @@ const onStartClick = () => {
               Kapten telah membubarkan tim. Anda akan dikembalikan ke halaman Battle.
             </p>
             <button
-              onClick={() => router.replace("/sekretaris/battle?autoRefresh=1")}
+              onClick={() => router.replace("/murid/battle?autoRefresh=1")}
               className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-mono text-sm font-bold"
             >
               Kembali ke Battle
@@ -657,7 +634,6 @@ const onStartClick = () => {
         </div>
       )}
 
-      {/* Error */}
       {modal?.type === "error" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl border border-slate-100">

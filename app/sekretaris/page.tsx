@@ -20,6 +20,10 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   MoreVertical,
+  ArrowUpCircle,
+  Sparkles,
+  Zap,
+  X,
 } from "lucide-react";
 
 interface SekretarisProfile {
@@ -64,6 +68,14 @@ interface DashboardData {
     message: string;
     created_at: string;
   }[];
+  levelUp?: boolean;
+}
+
+interface ModalData {
+  isOpen: boolean;
+  title: string;
+  message: string;
+  type: "success" | "error" | "info" | "warning";
 }
 
 export default function SekretarisPage() {
@@ -72,15 +84,43 @@ export default function SekretarisPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [updatingLevel, setUpdatingLevel] = useState(false);
+  const [levelUpMessage, setLevelUpMessage] = useState<string | null>(null);
+  const [showLevelUpAnimation, setShowLevelUpAnimation] = useState(false);
+  const [modal, setModal] = useState<ModalData>({
+    isOpen: false,
+    title: "",
+    message: "",
+    type: "info",
+  });
+
+  const showModal = (
+    title: string,
+    message: string,
+    type: ModalData["type"] = "info",
+  ) => {
+    setModal({ isOpen: true, title, message, type });
+  };
+
+  const closeModal = () => {
+    setModal({ isOpen: false, title: "", message: "", type: "info" });
+  };
 
   const fetchDashboardData = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setLevelUpMessage(null);
     try {
       const res = await fetch("/api/sekretaris/dashboard");
       if (!res.ok) throw new Error("Gagal mengambil data");
       const json = await res.json();
       setData(json);
+
+      if (json.levelUp) {
+        setLevelUpMessage(`Level naik ke ${json.profile.level}!`);
+        setShowLevelUpAnimation(true);
+        setTimeout(() => setShowLevelUpAnimation(false), 5000);
+      }
     } catch (err) {
       console.error("Error fetching dashboard:", err);
       setError("Gagal memuat data dashboard. Silakan refresh.");
@@ -97,6 +137,48 @@ export default function SekretarisPage() {
     setIsRefreshing(true);
     await fetchDashboardData();
     setIsRefreshing(false);
+  };
+
+  const handleUpdateLevel = async () => {
+    if (updatingLevel) return;
+    setUpdatingLevel(true);
+    setLevelUpMessage(null);
+
+    try {
+      const res = await fetch("/api/sekretaris/update-level", {
+        method: "POST",
+      });
+      const result = await res.json();
+
+      if (!res.ok) {
+        showModal("Gagal", result.error || "Gagal update level", "error");
+        return;
+      }
+
+      if (result.leveledUp) {
+        setLevelUpMessage(`Selamat! Level naik ke ${result.level}!`);
+        setShowLevelUpAnimation(true);
+        setTimeout(() => setShowLevelUpAnimation(false), 5000);
+        await fetchDashboardData();
+        showModal(
+          "Berhasil!",
+          `Level berhasil naik ke ${result.level}!`,
+          "success",
+        );
+      } else {
+        const needed = result.neededExp - result.exp;
+        showModal(
+          "EXP Belum Cukup",
+          `EXP: ${result.exp}/${result.neededExp} (butuh ${needed} EXP lagi untuk naik level)`,
+          "warning",
+        );
+      }
+    } catch (err) {
+      console.error("Error updating level:", err);
+      showModal("Error", "Terjadi kesalahan saat update level", "error");
+    } finally {
+      setUpdatingLevel(false);
+    }
   };
 
   const formatCurrency = (amount: number): string => {
@@ -120,7 +202,7 @@ export default function SekretarisPage() {
   };
 
   const getExpPercentage = (exp: number, level: number): number => {
-    const maxExp = level * 10;
+    const maxExp = level * 100;
     return Math.min((exp / maxExp) * 100, 100);
   };
 
@@ -135,8 +217,7 @@ export default function SekretarisPage() {
           </div>
           <div className="h-10 w-10 bg-slate-200 rounded-xl"></div>
         </div>
-        
-        {/* Profile Card Skeleton */}
+
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
           <div className="flex items-center gap-4">
             <div className="w-16 h-16 bg-slate-200 rounded-full"></div>
@@ -147,17 +228,18 @@ export default function SekretarisPage() {
           </div>
         </div>
 
-        {/* Stats Skeleton */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="bg-white border border-slate-200 rounded-xl p-4">
+            <div
+              key={i}
+              className="bg-white border border-slate-200 rounded-xl p-4"
+            >
               <div className="h-4 w-20 bg-slate-200 rounded mb-2"></div>
               <div className="h-6 w-16 bg-slate-200 rounded"></div>
             </div>
           ))}
         </div>
 
-        {/* Ringkasan PT Skeleton */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
           <div className="h-6 w-40 bg-slate-200 rounded mb-4"></div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -170,7 +252,6 @@ export default function SekretarisPage() {
           </div>
         </div>
 
-        {/* Kehadiran Skeleton */}
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
           <div className="h-6 w-40 bg-slate-200 rounded mb-4"></div>
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2">
@@ -191,7 +272,9 @@ export default function SekretarisPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-        <h3 className="text-xl font-bold text-slate-900 mb-2">Gagal Memuat Data</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">
+          Gagal Memuat Data
+        </h3>
         <p className="text-slate-500 text-center max-w-md">{error}</p>
         <button
           onClick={handleRefresh}
@@ -207,7 +290,9 @@ export default function SekretarisPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <User className="w-16 h-16 text-slate-300 mb-4" />
-        <h3 className="text-xl font-bold text-slate-900 mb-2">Belum Ada Data</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">
+          Belum Ada Data
+        </h3>
         <p className="text-slate-500 text-center max-w-md">
           Belum ada data yang tersedia di dashboard.
         </p>
@@ -218,9 +303,66 @@ export default function SekretarisPage() {
   const { profile, classSummary, todayAttendance } = data;
   const balance = profile.income - profile.expense;
   const expPercentage = getExpPercentage(profile.exp, profile.level);
+  const nextLevelExp = profile.level * 100;
 
   return (
     <div className="space-y-6">
+      {showLevelUpAnimation && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl p-8 max-w-sm w-full mx-4 shadow-xl border border-slate-200 animate-in fade-in zoom-in-95 duration-300">
+            <div className="text-center">
+              {/* Icon */}
+              <div className="w-16 h-16 rounded-full bg-emerald-100 flex items-center justify-center mx-auto mb-4">
+                <ArrowUpCircle className="w-8 h-8 text-emerald-600" />
+              </div>
+
+              {/* Title */}
+              <h2 className="font-mono text-2xl font-bold text-slate-900">
+                Level Up!
+              </h2>
+
+              {/* Level */}
+              <p className="font-mono text-4xl font-bold text-emerald-600 mt-2">
+                {profile.level}
+              </p>
+              <p className="text-sm text-slate-500 mt-1">Level baru Anda</p>
+
+              {/* Divider */}
+              <div className="w-12 h-0.5 bg-emerald-200 mx-auto my-4" />
+
+              {/* Message */}
+              <p className="text-sm text-slate-600">
+                Selamat! Anda telah mencapai level {profile.level}.
+              </p>
+
+              {/* Button */}
+              <button
+                onClick={() => setShowLevelUpAnimation(false)}
+                className="mt-6 px-6 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg font-mono text-sm font-bold transition-colors cursor-pointer"
+              >
+                Lanjutkan
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Level Up Message */}
+      {levelUpMessage && !showLevelUpAnimation && (
+        <div
+          className={`p-4 rounded-xl flex items-center gap-3 ${
+            levelUpMessage.includes("naik")
+              ? "bg-gradient-to-r from-amber-50 to-purple-50 border border-amber-200 text-amber-800"
+              : "bg-blue-50 border border-blue-200 text-blue-800"
+          }`}
+        >
+          <Zap
+            className={`w-5 h-5 ${levelUpMessage.includes("naik") ? "text-amber-500" : "text-blue-500"}`}
+          />
+          <p className="text-sm font-medium">{levelUpMessage}</p>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -231,12 +373,26 @@ export default function SekretarisPage() {
             Pantau data diri dan ringkasan PT Anda
           </p>
         </div>
-        <button
-          onClick={handleRefresh}
-          className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-purple-600 transition-all"
-        >
-          <RefreshCw className={`w-4 h-4 ${isRefreshing ? "animate-spin text-purple-600" : ""}`} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={handleUpdateLevel}
+            disabled={updatingLevel}
+            className="flex items-center gap-1.5 px-3 py-2 bg-amber-500 hover:bg-amber-600 text-white rounded-xl transition-colors text-xs font-mono font-bold disabled:opacity-50 shadow-sm"
+          >
+            <ArrowUpCircle
+              className={`w-4 h-4 ${updatingLevel ? "animate-spin" : ""}`}
+            />
+            Update Level
+          </button>
+          <button
+            onClick={handleRefresh}
+            className="p-2 bg-white border border-slate-200 rounded-xl text-slate-600 hover:text-purple-600 transition-all"
+          >
+            <RefreshCw
+              className={`w-4 h-4 ${isRefreshing ? "animate-spin text-purple-600" : ""}`}
+            />
+          </button>
+        </div>
       </div>
 
       {/* Profile Card - Enhanced */}
@@ -270,24 +426,32 @@ export default function SekretarisPage() {
           <div className="flex flex-wrap items-center gap-4 text-sm bg-white/70 rounded-xl px-4 py-2 border border-slate-100">
             <div className="text-center">
               <p className="text-[10px] font-mono text-slate-500">Level</p>
-              <p className="font-mono text-lg font-bold text-slate-900">{profile.level}</p>
+              <p className="font-mono text-lg font-bold text-slate-900">
+                {profile.level}
+              </p>
             </div>
             <div className="text-center">
               <p className="text-[10px] font-mono text-slate-500">EXP</p>
               <p className="font-mono text-sm font-bold text-slate-900">
-                {profile.exp} / {profile.level * 10}
+                {profile.exp} / {nextLevelExp}
               </p>
             </div>
             <div className="text-center">
               <p className="text-[10px] font-mono text-slate-500">Saldo</p>
-              <p className={`font-mono text-sm font-bold ${balance >= 0 ? "text-emerald-600" : "text-rose-600"}`}>
+              <p
+                className={`font-mono text-sm font-bold ${balance >= 0 ? "text-emerald-600" : "text-rose-600"}`}
+              >
                 {formatCurrency(balance < 0 ? 0 : balance)}
               </p>
             </div>
             <div className="flex items-center gap-2 text-[10px] font-mono">
-              <span className="text-emerald-600 font-bold">W: {profile.wins}</span>
+              <span className="text-emerald-600 font-bold">
+                W: {profile.wins}
+              </span>
               <span className="text-slate-300">/</span>
-              <span className="text-rose-600 font-bold">L: {profile.losses}</span>
+              <span className="text-rose-600 font-bold">
+                L: {profile.losses}
+              </span>
             </div>
           </div>
         </div>
@@ -329,8 +493,14 @@ export default function SekretarisPage() {
             <BarChart3 className="w-4 h-4 text-blue-600" />
           </div>
           <p className="font-mono text-2xl font-bold text-slate-900 mt-1">
-            {classSummary.length > 0 
-              ? Math.round(classSummary.reduce((sum, c) => sum + (c.totalIncome - c.totalExpense > 0 ? 1 : 0), 0) / classSummary.length)
+            {classSummary.length > 0
+              ? Math.round(
+                  classSummary.reduce(
+                    (sum, c) =>
+                      sum + (c.totalIncome - c.totalExpense > 0 ? 1 : 0),
+                    0,
+                  ) / classSummary.length,
+                )
               : 0}
           </p>
           <p className="text-[10px] font-mono text-slate-400">Rata-rata</p>
@@ -344,7 +514,16 @@ export default function SekretarisPage() {
             <Wallet className="w-4 h-4 text-emerald-600" />
           </div>
           <p className="font-mono text-sm font-bold text-emerald-600 mt-1 truncate">
-            {formatCurrency(classSummary.reduce((sum, c) => sum + (c.totalIncome - c.totalExpense < 0 ? 0 : c.totalIncome - c.totalExpense), 0))}
+            {formatCurrency(
+              classSummary.reduce(
+                (sum, c) =>
+                  sum +
+                  (c.totalIncome - c.totalExpense < 0
+                    ? 0
+                    : c.totalIncome - c.totalExpense),
+                0,
+              ),
+            )}
           </p>
           <p className="text-[10px] font-mono text-slate-400">Gabungan</p>
         </div>
@@ -408,13 +587,19 @@ export default function SekretarisPage() {
                         </div>
                       </div>
                       <div className="text-right">
-                        <p className={`font-mono text-sm font-bold ${isPositive ? "text-emerald-600" : "text-slate-400"}`}>
+                        <p
+                          className={`font-mono text-sm font-bold ${isPositive ? "text-emerald-600" : "text-slate-400"}`}
+                        >
                           {formatCurrency(isPositive ? balance : 0)}
                         </p>
                         <div className="flex items-center justify-end gap-1 text-[10px]">
-                          <span className="text-emerald-500">↑ {formatCurrency(cls.totalIncome)}</span>
+                          <span className="text-emerald-500">
+                            ↑ {formatCurrency(cls.totalIncome)}
+                          </span>
                           <span className="text-slate-300">/</span>
-                          <span className="text-rose-500">↓ {formatCurrency(cls.totalExpense)}</span>
+                          <span className="text-rose-500">
+                            ↓ {formatCurrency(cls.totalExpense)}
+                          </span>
                         </div>
                       </div>
                     </div>
@@ -433,7 +618,10 @@ export default function SekretarisPage() {
               Kehadiran Hari Ini
             </h3>
             <span className="text-[10px] font-mono text-slate-400">
-              {new Date().toLocaleDateString("id-ID", { day: "numeric", month: "short" })}
+              {new Date().toLocaleDateString("id-ID", {
+                day: "numeric",
+                month: "short",
+              })}
             </span>
           </div>
 
@@ -477,19 +665,28 @@ export default function SekretarisPage() {
 
           <div className="mt-4 flex items-center justify-between text-xs text-slate-500 bg-slate-50 rounded-xl px-4 py-2">
             <span className="font-mono">Total Karyawan</span>
-            <span className="font-mono font-bold text-slate-900">{todayAttendance.total}</span>
+            <span className="font-mono font-bold text-slate-900">
+              {todayAttendance.total}
+            </span>
           </div>
 
           {todayAttendance.total > 0 && (
             <div className="mt-3">
               <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
                 <span>Kehadiran</span>
-                <span>{Math.round((todayAttendance.hadir / todayAttendance.total) * 100)}%</span>
+                <span>
+                  {Math.round(
+                    (todayAttendance.hadir / todayAttendance.total) * 100,
+                  )}
+                  %
+                </span>
               </div>
               <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div
                   className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500"
-                  style={{ width: `${(todayAttendance.hadir / todayAttendance.total) * 100}%` }}
+                  style={{
+                    width: `${(todayAttendance.hadir / todayAttendance.total) * 100}%`,
+                  }}
                 />
               </div>
             </div>
@@ -517,15 +714,23 @@ export default function SekretarisPage() {
                 <div
                   key={activity.id}
                   className={`p-3 rounded-xl flex items-start gap-3 transition-colors ${
-                    isFirst 
-                      ? "bg-purple-50/80 border border-purple-100" 
+                    isFirst
+                      ? "bg-purple-50/80 border border-purple-100"
                       : "bg-slate-50/80 border border-slate-100"
                   }`}
                 >
-                  <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
-                    isFirst ? "bg-purple-200 text-purple-700" : "bg-slate-200 text-slate-600"
-                  }`}>
-                    {isFirst ? <TrendingUp className="w-4 h-4" /> : <Clock className="w-4 h-4" />}
+                  <div
+                    className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 ${
+                      isFirst
+                        ? "bg-purple-200 text-purple-700"
+                        : "bg-slate-200 text-slate-600"
+                    }`}
+                  >
+                    {isFirst ? (
+                      <TrendingUp className="w-4 h-4" />
+                    ) : (
+                      <Clock className="w-4 h-4" />
+                    )}
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-xs text-slate-700">{activity.message}</p>
@@ -556,12 +761,86 @@ export default function SekretarisPage() {
               Panel Sekretaris
             </p>
             <p className="text-xs text-purple-700 mt-0.5">
-              Anda dapat mengelola data kelas dan karyawan. Untuk mengelola soal dan duel, 
-              silakan hubungi Admin (Guru).
+              Anda dapat mengelola data kelas dan karyawan. Untuk mengelola soal
+              dan duel, silakan hubungi Admin (Guru).
             </p>
           </div>
         </div>
       </div>
+
+      {/* MODAL */}
+      {modal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
+          <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl border border-slate-100">
+            <div className="flex items-center justify-between mb-4">
+              <h3
+                className={`font-mono text-lg font-bold ${
+                  modal.type === "success"
+                    ? "text-emerald-600"
+                    : modal.type === "error"
+                      ? "text-red-600"
+                      : modal.type === "warning"
+                        ? "text-amber-600"
+                        : "text-blue-600"
+                }`}
+              >
+                {modal.title}
+              </h3>
+              <button
+                onClick={closeModal}
+                className="p-1 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+
+            <div
+              className={`p-4 rounded-xl mb-5 ${
+                modal.type === "success"
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                  : modal.type === "error"
+                    ? "bg-red-50 border border-red-200 text-red-700"
+                    : modal.type === "warning"
+                      ? "bg-amber-50 border border-amber-200 text-amber-700"
+                      : "bg-blue-50 border border-blue-200 text-blue-700"
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {modal.type === "success" && (
+                  <CheckCircle className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                )}
+                {modal.type === "error" && (
+                  <AlertCircle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+                )}
+                {modal.type === "warning" && (
+                  <AlertCircle className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+                )}
+                {modal.type === "info" && (
+                  <AlertCircle className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
+                )}
+                <p className="text-sm leading-relaxed whitespace-pre-line">
+                  {modal.message}
+                </p>
+              </div>
+            </div>
+
+            <button
+              onClick={closeModal}
+              className={`w-full px-4 py-2.5 rounded-lg transition-colors font-mono text-sm font-bold ${
+                modal.type === "success"
+                  ? "bg-emerald-600 hover:bg-emerald-700 text-white"
+                  : modal.type === "error"
+                    ? "bg-red-600 hover:bg-red-700 text-white"
+                    : modal.type === "warning"
+                      ? "bg-amber-600 hover:bg-amber-700 text-white"
+                      : "bg-blue-600 hover:bg-blue-700 text-white"
+              }`}
+            >
+              Tutup
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

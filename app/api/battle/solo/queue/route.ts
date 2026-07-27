@@ -95,7 +95,7 @@ export async function POST() {
         // Cari soal pertama (round 1)
         const avgLevel = Math.round((level + opponentLevel) / 2);
         const questionsResult = await query<QuestionRow>(
-          `SELECT id FROM questions WHERE level = $1 ORDER BY RAND() LIMIT 1`,
+          `SELECT id FROM questions WHERE level = $1 ORDER BY RANDOM() LIMIT 1`,
           [avgLevel]
         );
 
@@ -104,7 +104,7 @@ export async function POST() {
           questionId = questionsResult.rows[0].id;
         } else {
           const fallbackResult = await query<QuestionRow>(
-            `SELECT id FROM questions WHERE level = 1 ORDER BY RAND() LIMIT 1`
+            `SELECT id FROM questions WHERE level = 1 ORDER BY RANDOM() LIMIT 1`
           );
           if (fallbackResult.rows.length > 0) {
             questionId = fallbackResult.rows[0].id;

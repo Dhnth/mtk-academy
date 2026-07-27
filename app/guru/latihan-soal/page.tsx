@@ -61,7 +61,9 @@ export default function LatihanSoalPage() {
   // Alert states
   const [alertTitle, setAlertTitle] = useState("");
   const [alertMessage, setAlertMessage] = useState("");
-  const [alertType, setAlertType] = useState<"success" | "error" | "warning" | "info">("info");
+  const [alertType, setAlertType] = useState<
+    "success" | "error" | "warning" | "info"
+  >("info");
 
   // Form states
   const [formQuestion, setFormQuestion] = useState("");
@@ -92,7 +94,11 @@ export default function LatihanSoalPage() {
   const [levelStats, setLevelStats] = useState<LevelStats[]>([]);
 
   // Show alert modal
-  const showAlert = (title: string, message: string, type: "success" | "error" | "warning" | "info" = "info") => {
+  const showAlert = (
+    title: string,
+    message: string,
+    type: "success" | "error" | "warning" | "info" = "info",
+  ) => {
     setAlertTitle(title);
     setAlertMessage(message);
     setAlertType(type);
@@ -104,10 +110,11 @@ export default function LatihanSoalPage() {
     setLoading(true);
     setError(null);
     try {
-      const url = filterLevel === "all" 
-        ? "/api/guru/questions" 
-        : `/api/guru/questions?level=${filterLevel}`;
-      
+      const url =
+        filterLevel === "all"
+          ? "/api/guru/questions"
+          : `/api/guru/questions?level=${filterLevel}`;
+
       const res = await fetch(url);
       if (!res.ok) throw new Error("Gagal mengambil data");
       const data = await res.json();
@@ -122,12 +129,14 @@ export default function LatihanSoalPage() {
         stats[q.level].total += 1;
       });
 
-      const levelStatsArray: LevelStats[] = Object.entries(stats).map(([level, stat]) => ({
-        level: Number(level),
-        totalQuestions: stat.total,
-        requiredQuestions: stat.required,
-        isSufficient: stat.total >= stat.required,
-      }));
+      const levelStatsArray: LevelStats[] = Object.entries(stats).map(
+        ([level, stat]) => ({
+          level: Number(level),
+          totalQuestions: stat.total,
+          requiredQuestions: stat.required,
+          isSufficient: stat.total >= stat.required,
+        }),
+      );
 
       setLevelStats(levelStatsArray);
     } catch (err) {
@@ -144,14 +153,14 @@ export default function LatihanSoalPage() {
 
   // Filter questions by search
   const filteredQuestions = questions.filter((q) =>
-    q.question.toLowerCase().includes(searchTerm.toLowerCase())
+    q.question.toLowerCase().includes(searchTerm.toLowerCase()),
   );
 
   // Pagination
   const totalPages = Math.ceil(filteredQuestions.length / itemsPerPage);
   const paginatedQuestions = filteredQuestions.slice(
     (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    currentPage * itemsPerPage,
   );
 
   // Format date
@@ -304,7 +313,11 @@ export default function LatihanSoalPage() {
       const data = await res.json();
 
       if (!res.ok) {
-        showAlert("Gagal Import", data.error || "Gagal mengimport data", "error");
+        showAlert(
+          "Gagal Import",
+          data.error || "Gagal mengimport data",
+          "error",
+        );
         return;
       }
 
@@ -312,7 +325,11 @@ export default function LatihanSoalPage() {
       await fetchQuestions();
 
       if (data.results.failed.length === 0) {
-        showAlert("Berhasil", `${data.results.success} soal berhasil diimport`, "success");
+        showAlert(
+          "Berhasil",
+          `${data.results.success} soal berhasil diimport`,
+          "success",
+        );
         setTimeout(() => {
           setShowImportModal(false);
           setImportFile(null);
@@ -323,7 +340,7 @@ export default function LatihanSoalPage() {
         showAlert(
           "Import Selesai",
           `${data.results.success} berhasil, ${data.results.failed.length} gagal`,
-          "warning"
+          "warning",
         );
       }
     } catch (err) {
@@ -336,7 +353,15 @@ export default function LatihanSoalPage() {
 
   // Download template
   const downloadTemplate = () => {
-    const headers = ["Pertanyaan", "Opsi A", "Opsi B", "Opsi C", "Opsi D", "Jawaban Benar", "Level"];
+    const headers = [
+      "Pertanyaan",
+      "Opsi A",
+      "Opsi B",
+      "Opsi C",
+      "Opsi D",
+      "Jawaban Benar",
+      "Level",
+    ];
     const sampleData = [
       ["2/3 + 5/6 = ?", "1", "1.5", "2", "2.5", "B", "1"],
       ["√81 = ?", "3", "6", "9", "12", "C", "1"],
@@ -428,7 +453,9 @@ export default function LatihanSoalPage() {
       D: "bg-purple-100 text-purple-700",
     };
     return (
-      <span className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded ${colors[correct as keyof typeof colors]}`}>
+      <span
+        className={`px-2 py-0.5 text-[10px] font-mono font-bold rounded ${colors[correct as keyof typeof colors]}`}
+      >
         {correct}
       </span>
     );
@@ -447,7 +474,10 @@ export default function LatihanSoalPage() {
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="bg-white border border-slate-200 rounded-xl p-4 h-24">
+            <div
+              key={i}
+              className="bg-white border border-slate-200 rounded-xl p-4 h-24"
+            >
               <div className="h-4 w-24 bg-slate-200 rounded mb-2"></div>
               <div className="h-6 w-16 bg-slate-200 rounded"></div>
             </div>
@@ -471,7 +501,9 @@ export default function LatihanSoalPage() {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-4">
         <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-        <h3 className="text-xl font-bold text-slate-900 mb-2">Gagal Memuat Data</h3>
+        <h3 className="text-xl font-bold text-slate-900 mb-2">
+          Gagal Memuat Data
+        </h3>
         <p className="text-slate-500 text-center max-w-md">{error}</p>
         <button
           onClick={() => fetchQuestions()}
@@ -544,18 +576,24 @@ export default function LatihanSoalPage() {
             <Layers className="w-8 h-8 text-purple-600" />
           </div>
         </div>
+        {/* Total Penggunaan */}
         <div className="bg-white border border-slate-200 rounded-xl p-4">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-[10px] font-mono text-slate-500 uppercase tracking-wider">
-                Soal Terpakai
+                Total Penggunaan
               </p>
               <p className="font-mono text-2xl font-bold text-slate-900">
-                {questions.reduce((sum, q) => sum + q.usage_count, 0)}
+                {questions
+                  .reduce((sum, q) => sum + Number(q.usage_count || 0), 0)
+                  .toLocaleString("id-ID")}
               </p>
             </div>
             <BarChart3 className="w-8 h-8 text-emerald-600" />
           </div>
+          <p className="text-[10px] font-mono text-slate-400 mt-1">
+            Total soal digunakan di battle
+          </p>
         </div>
       </div>
 
@@ -670,7 +708,10 @@ export default function LatihanSoalPage() {
             <tbody>
               {paginatedQuestions.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="px-4 py-8 text-center text-slate-500">
+                  <td
+                    colSpan={7}
+                    className="px-4 py-8 text-center text-slate-500"
+                  >
                     {searchTerm
                       ? `Tidak ada soal dengan teks "${searchTerm}"`
                       : "Belum ada soal. Tambahkan soal pertama Anda."}
@@ -690,7 +731,8 @@ export default function LatihanSoalPage() {
                         {q.question}
                       </p>
                       <p className="text-[10px] font-mono text-slate-400 mt-0.5 md:hidden">
-                        A: {q.option_a}, B: {q.option_b}, C: {q.option_c}, D: {q.option_d}
+                        A: {q.option_a}, B: {q.option_b}, C: {q.option_c}, D:{" "}
+                        {q.option_d}
                       </p>
                     </td>
                     <td className="px-4 py-3 hidden md:table-cell">
@@ -759,7 +801,9 @@ export default function LatihanSoalPage() {
                 {currentPage} / {totalPages}
               </span>
               <button
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                onClick={() =>
+                  setCurrentPage((p) => Math.min(totalPages, p + 1))
+                }
                 disabled={currentPage === totalPages}
                 className="px-3 py-1 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors text-xs font-mono"
               >
@@ -799,7 +843,8 @@ export default function LatihanSoalPage() {
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none font-math"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Mendukung pecahan (2/3), akar (√), desimal (0,5), dan operasi matematika lainnya
+                  Mendukung pecahan (2/3), akar (√), desimal (0,5), dan operasi
+                  matematika lainnya
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -859,7 +904,9 @@ export default function LatihanSoalPage() {
                   </label>
                   <select
                     value={formCorrect}
-                    onChange={(e) => setFormCorrect(e.target.value as "A" | "B" | "C" | "D")}
+                    onChange={(e) =>
+                      setFormCorrect(e.target.value as "A" | "B" | "C" | "D")
+                    }
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
                   >
                     <option value="A">A</option>
@@ -886,12 +933,16 @@ export default function LatihanSoalPage() {
               </div>
 
               {/* Warning if insufficient */}
-              {levelStats.find(s => s.level === formLevel)?.isSufficient === false && (
+              {levelStats.find((s) => s.level === formLevel)?.isSufficient ===
+                false && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-700">
-                    Level {formLevel} saat ini memiliki {levelStats.find(s => s.level === formLevel)?.totalQuestions || 0} soal. 
-                    Minimal dibutuhkan {formLevel + 4} soal agar sistem berjalan optimal.
+                    Level {formLevel} saat ini memiliki{" "}
+                    {levelStats.find((s) => s.level === formLevel)
+                      ?.totalQuestions || 0}{" "}
+                    soal. Minimal dibutuhkan {formLevel + 4} soal agar sistem
+                    berjalan optimal.
                   </p>
                 </div>
               )}
@@ -944,7 +995,8 @@ export default function LatihanSoalPage() {
                   className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm resize-none font-math"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">
-                  Mendukung pecahan (2/3), akar (√), desimal (0,5), dan operasi matematika lainnya
+                  Mendukung pecahan (2/3), akar (√), desimal (0,5), dan operasi
+                  matematika lainnya
                 </p>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
@@ -1004,7 +1056,9 @@ export default function LatihanSoalPage() {
                   </label>
                   <select
                     value={formCorrect}
-                    onChange={(e) => setFormCorrect(e.target.value as "A" | "B" | "C" | "D")}
+                    onChange={(e) =>
+                      setFormCorrect(e.target.value as "A" | "B" | "C" | "D")
+                    }
                     className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white"
                   >
                     <option value="A">A</option>
@@ -1030,12 +1084,16 @@ export default function LatihanSoalPage() {
                 </div>
               </div>
 
-              {levelStats.find(s => s.level === formLevel)?.isSufficient === false && (
+              {levelStats.find((s) => s.level === formLevel)?.isSufficient ===
+                false && (
                 <div className="p-3 bg-amber-50 border border-amber-200 rounded-lg flex items-start gap-2">
                   <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
                   <p className="text-xs text-amber-700">
-                    Level {formLevel} saat ini memiliki {levelStats.find(s => s.level === formLevel)?.totalQuestions || 0} soal. 
-                    Minimal dibutuhkan {formLevel + 4} soal agar sistem berjalan optimal.
+                    Level {formLevel} saat ini memiliki{" "}
+                    {levelStats.find((s) => s.level === formLevel)
+                      ?.totalQuestions || 0}{" "}
+                    soal. Minimal dibutuhkan {formLevel + 4} soal agar sistem
+                    berjalan optimal.
                   </p>
                 </div>
               )}
@@ -1131,7 +1189,12 @@ export default function LatihanSoalPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-mono font-bold">3.</span>
-                    <span>Rumus: <code className="bg-blue-100 px-2 py-0.5 rounded font-mono">Kebutuhan = Level + 4</code></span>
+                    <span>
+                      Rumus:{" "}
+                      <code className="bg-blue-100 px-2 py-0.5 rounded font-mono">
+                        Kebutuhan = Level + 4
+                      </code>
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -1147,7 +1210,10 @@ export default function LatihanSoalPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-mono font-bold">•</span>
-                    <span>Murid level tinggi akan mendapatkan soal yang sama berulang kali</span>
+                    <span>
+                      Murid level tinggi akan mendapatkan soal yang sama
+                      berulang kali
+                    </span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-mono font-bold">•</span>
@@ -1171,7 +1237,9 @@ export default function LatihanSoalPage() {
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="font-mono font-bold">•</span>
-                    <span>Soal yang sama boleh digunakan untuk level berbeda</span>
+                    <span>
+                      Soal yang sama boleh digunakan untuk level berbeda
+                    </span>
                   </li>
                 </ul>
               </div>
@@ -1194,13 +1262,19 @@ export default function LatihanSoalPage() {
                   <tbody>
                     {levelStats.length === 0 ? (
                       <tr>
-                        <td colSpan={3} className="px-3 py-4 text-center text-slate-500 text-xs">
+                        <td
+                          colSpan={3}
+                          className="px-3 py-4 text-center text-slate-500 text-xs"
+                        >
                           Belum ada data level
                         </td>
                       </tr>
                     ) : (
                       levelStats.map((stat) => (
-                        <tr key={stat.level} className="border-t border-slate-100">
+                        <tr
+                          key={stat.level}
+                          className="border-t border-slate-100"
+                        >
                           <td className="px-3 py-2 font-mono text-xs font-bold text-slate-900">
                             Lv.{stat.level}
                           </td>
@@ -1333,7 +1407,8 @@ export default function LatihanSoalPage() {
                     <button
                       onClick={() => {
                         setImportFile(null);
-                        if (fileInputRef.current) fileInputRef.current.value = "";
+                        if (fileInputRef.current)
+                          fileInputRef.current.value = "";
                         setImportResult(null);
                       }}
                       className="p-1 text-red-500 hover:bg-red-50 rounded-lg transition-colors"
@@ -1421,12 +1496,17 @@ export default function LatihanSoalPage() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className={`font-mono text-lg font-bold ${
-                alertType === "success" ? "text-emerald-600" :
-                alertType === "error" ? "text-red-600" :
-                alertType === "warning" ? "text-amber-600" :
-                "text-blue-600"
-              }`}>
+              <h3
+                className={`font-mono text-lg font-bold ${
+                  alertType === "success"
+                    ? "text-emerald-600"
+                    : alertType === "error"
+                      ? "text-red-600"
+                      : alertType === "warning"
+                        ? "text-amber-600"
+                        : "text-blue-600"
+                }`}
+              >
                 {alertTitle}
               </h3>
               <button
@@ -1437,12 +1517,17 @@ export default function LatihanSoalPage() {
               </button>
             </div>
 
-            <div className={`p-3 rounded-lg mb-4 ${
-              alertType === "success" ? "bg-emerald-50 border border-emerald-200 text-emerald-700" :
-              alertType === "error" ? "bg-red-50 border border-red-200 text-red-700" :
-              alertType === "warning" ? "bg-amber-50 border border-amber-200 text-amber-700" :
-              "bg-blue-50 border border-blue-200 text-blue-700"
-            }`}>
+            <div
+              className={`p-3 rounded-lg mb-4 ${
+                alertType === "success"
+                  ? "bg-emerald-50 border border-emerald-200 text-emerald-700"
+                  : alertType === "error"
+                    ? "bg-red-50 border border-red-200 text-red-700"
+                    : alertType === "warning"
+                      ? "bg-amber-50 border border-amber-200 text-amber-700"
+                      : "bg-blue-50 border border-blue-200 text-blue-700"
+              }`}
+            >
               <p className="text-sm">{alertMessage}</p>
             </div>
 

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Math Battle Arena",
-  description: "Arena Pertempuran Matematika - Platform Gamifikasi Belajar Matematika",
+  title: "MTK Academy - Arena Pertempuran Matematika",
+  description: "Belajar matematika dengan cara bertarung. Duel 1v1, battle tim, dan rebutkan posisi di Hall of Fame!",
   icons: {
     icon: "/favicon.ico",
   },

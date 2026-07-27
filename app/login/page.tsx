@@ -122,7 +122,7 @@ export default function LoginPage() {
             <Shield className="w-8 h-8 text-white" />
           </div>
           <h1 className="font-mono text-3xl font-bold text-slate-900 tracking-tight">
-            MATH WARFARE
+            MTK Academy
           </h1>
           <p className="text-sm text-slate-500 mt-1 font-mono tracking-wide">
             ARENA PERTEMPURAN MATEMATIKA
