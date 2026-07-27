@@ -23,7 +23,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Generate URL untuk profile publik
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://mtk-academy.vercel.app/";
     const profileUrl = `${baseUrl}/profile/${username}`;
 
     // Generate QR Code sebagai buffer
