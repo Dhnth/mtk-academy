@@ -1,15 +1,12 @@
 "use client";
 
-import { useState, FormEvent, useEffect } from "react";
-import { signIn, useSession } from "next-auth/react";
-import { useRouter } from "next/navigation";
+import { useState, FormEvent } from "react";
+import { signIn } from "next-auth/react";
 import {
-  LogIn,
   AlertCircle,
   Shield,
   User,
   Lock,
-  Sparkles,
   ChevronRight,
   Loader2,
 } from "lucide-react";
@@ -25,24 +22,6 @@ export default function LoginPage() {
   const [errorMsg, setErrorMsg] = useState<string>("");
   const [loading, setLoading] = useState<boolean>(false);
   const [showPassword, setShowPassword] = useState<boolean>(false);
-  const router = useRouter();
-  const { data: session, status } = useSession();
-
-  // Auto redirect jika sudah login - PAKAI WINDOW.LOCATION
-  useEffect(() => {
-    if (status === "authenticated" && session?.user) {
-      const role = session.user.role;
-      if (role === "ADMIN") {
-        window.location.href = "/guru";
-      } else if (role === "SECRETARY") {
-        window.location.href = "/sekretaris";
-      } else if (role === "STUDENT") {
-        window.location.href = "/murid";
-      } else {
-        window.location.href = "/murid";
-      }
-    }
-  }, [session, status]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -62,7 +41,7 @@ export default function LoginPage() {
         return;
       }
 
-      // 🔥 PAKAI WINDOW.LOCATION LANGSUNG, BUKAN ROUTER.PUSH
+      // 🔥 PAKAI WINDOW.LOCATION LANGSUNG
       const meRes = await fetch("/api/me");
       if (meRes.ok) {
         const userData: UserProfileResponse = await meRes.json();
@@ -74,7 +53,6 @@ export default function LoginPage() {
           window.location.href = "/murid";
         }
       } else {
-        // Fallback: redirect ke halaman default
         window.location.href = "/murid";
       }
     } catch {
@@ -82,30 +60,6 @@ export default function LoginPage() {
       setLoading(false);
     }
   };
-
-  // Jika sedang loading session, tampilkan loading
-  if (status === "loading") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
-          <p className="text-sm text-slate-500 font-mono">Memuat sesi...</p>
-        </div>
-      </div>
-    );
-  }
-
-  // Jika sudah login, jangan tampilkan form (akan redirect otomatis)
-  if (status === "authenticated") {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex items-center justify-center p-4">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-10 h-10 text-purple-600 animate-spin" />
-          <p className="text-sm text-slate-500 font-mono">Mengalihkan...</p>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 flex flex-col justify-center items-center p-4 relative overflow-hidden">
