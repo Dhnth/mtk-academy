@@ -245,7 +245,7 @@ export default function ProfileContent() {
         <p className="text-slate-500 text-center max-w-md">{error || "Data tidak ditemukan"}</p>
         <button
           onClick={fetchData}
-          className="mt-4 px-6 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors"
+          className="mt-4 px-6 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors"
         >
           Coba Lagi
         </button>
@@ -274,10 +274,10 @@ export default function ProfileContent() {
       <div className="bg-white border border-slate-200 rounded-2xl p-6 shadow-2xs">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-6">
           <div className="relative">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center text-white text-2xl font-mono font-bold shadow-lg">
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center text-white text-2xl font-mono font-bold shadow-lg">
               {stats.name.charAt(0).toUpperCase()}
             </div>
-            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-emerald-500 rounded-full border-2 border-white flex items-center justify-center">
+            <div className="absolute -bottom-1 -right-1 w-6 h-6 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
               <CheckCircle className="w-3 h-3 text-white" />
             </div>
           </div>
@@ -286,7 +286,7 @@ export default function ProfileContent() {
               <h2 className="font-mono text-2xl font-bold text-slate-900">
                 {stats.name}
               </h2>
-              <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-mono font-bold rounded">
+              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-mono font-bold rounded">
                 {stats.role}
               </span>
               {stats.class_name && (
@@ -303,7 +303,7 @@ export default function ProfileContent() {
           </div>
           <button
             onClick={() => setShowPasswordModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-emerald-600 text-white rounded-xl hover:bg-emerald-700 transition-colors text-sm font-mono font-bold"
+            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors text-sm font-mono font-bold"
           >
             <Settings className="w-4 h-4" />
             Ganti Password
@@ -315,13 +315,13 @@ export default function ProfileContent() {
       <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
         <div className="flex items-center justify-between mb-4">
           <h4 className="font-mono text-sm font-bold text-slate-900 flex items-center gap-2">
-            <QrCode className="w-4 h-4 text-emerald-600" />
+            <QrCode className="w-4 h-4 text-purple-600" />
             QR Code Profile
           </h4>
           {!qrLoading && qrImageUrl && (
             <button
               onClick={downloadQR}
-              className="flex items-center gap-1.5 px-3 py-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors text-xs font-mono font-bold"
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-600 rounded-lg hover:bg-purple-100 transition-colors text-xs font-mono font-bold"
             >
               <Download className="w-3.5 h-3.5" />
               Download
@@ -358,7 +358,7 @@ export default function ProfileContent() {
           onClick={() => router.push("/sekretaris/profile?tab=profile")}
           className={`px-4 py-2 text-sm font-mono font-bold transition-colors border-b-2 whitespace-nowrap ${
             tab === "profile"
-              ? "border-emerald-600 text-emerald-600"
+              ? "border-purple-600 text-purple-600"
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
@@ -369,7 +369,7 @@ export default function ProfileContent() {
           onClick={() => router.push("/sekretaris/profile?tab=stats")}
           className={`px-4 py-2 text-sm font-mono font-bold transition-colors border-b-2 whitespace-nowrap ${
             tab === "stats"
-              ? "border-emerald-600 text-emerald-600"
+              ? "border-purple-600 text-purple-600"
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
@@ -380,7 +380,7 @@ export default function ProfileContent() {
           onClick={() => router.push("/sekretaris/profile?tab=history")}
           className={`px-4 py-2 text-sm font-mono font-bold transition-colors border-b-2 whitespace-nowrap ${
             tab === "history"
-              ? "border-emerald-600 text-emerald-600"
+              ? "border-purple-600 text-purple-600"
               : "border-transparent text-slate-500 hover:text-slate-700"
           }`}
         >
@@ -394,7 +394,7 @@ export default function ProfileContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
             <h4 className="font-mono text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <User className="w-4 h-4 text-emerald-600" />
+              <User className="w-4 h-4 text-purple-600" />
               Informasi Diri
             </h4>
             <div className="space-y-3">
@@ -408,7 +408,7 @@ export default function ProfileContent() {
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-sm text-slate-500">Role</span>
-                <span className="text-sm font-medium text-emerald-600">{stats.role}</span>
+                <span className="text-sm font-medium text-purple-600">{stats.role}</span>
               </div>
               <div className="flex justify-between py-2 border-b border-slate-100">
                 <span className="text-sm text-slate-500">PT</span>
@@ -423,21 +423,21 @@ export default function ProfileContent() {
 
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
             <h4 className="font-mono text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Sword className="w-4 h-4 text-emerald-600" />
+              <Sword className="w-4 h-4 text-purple-600" />
               Ringkasan Battle
             </h4>
             <div className="grid grid-cols-2 gap-3">
-              <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                <p className="text-[10px] font-mono text-emerald-600">Menang</p>
-                <p className="font-mono text-2xl font-bold text-emerald-600">{stats.wins}</p>
+              <div className="bg-purple-50 rounded-xl p-3 text-center">
+                <p className="text-[10px] font-mono text-purple-600">Menang</p>
+                <p className="font-mono text-2xl font-bold text-purple-600">{stats.wins}</p>
               </div>
               <div className="bg-red-50 rounded-xl p-3 text-center">
                 <p className="text-[10px] font-mono text-red-600">Kalah</p>
                 <p className="font-mono text-2xl font-bold text-red-600">{stats.losses}</p>
               </div>
-              <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                <p className="text-[10px] font-mono text-emerald-600">Win Rate</p>
-                <p className="font-mono text-2xl font-bold text-emerald-600">{winRate}%</p>
+              <div className="bg-purple-50 rounded-xl p-3 text-center">
+                <p className="text-[10px] font-mono text-purple-600">Win Rate</p>
+                <p className="font-mono text-2xl font-bold text-purple-600">{winRate}%</p>
               </div>
               <div className="bg-slate-50 rounded-xl p-3 text-center">
                 <p className="text-[10px] font-mono text-slate-600">Total Battle</p>
@@ -448,13 +448,13 @@ export default function ProfileContent() {
 
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs md:col-span-2">
             <h4 className="font-mono text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Wallet className="w-4 h-4 text-emerald-600" />
+              <Wallet className="w-4 h-4 text-purple-600" />
               Keuangan
             </h4>
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div className="bg-emerald-50 rounded-xl p-3 text-center">
-                <p className="text-[10px] font-mono text-emerald-600">Pemasukan</p>
-                <p className="font-mono text-sm font-bold text-emerald-600">{formatCurrency(stats.income)}</p>
+              <div className="bg-purple-50 rounded-xl p-3 text-center">
+                <p className="text-[10px] font-mono text-purple-600">Pemasukan</p>
+                <p className="font-mono text-sm font-bold text-purple-600">{formatCurrency(stats.income)}</p>
               </div>
               <div className="bg-red-50 rounded-xl p-3 text-center">
                 <p className="text-[10px] font-mono text-red-600">Pengeluaran</p>
@@ -477,11 +477,11 @@ export default function ProfileContent() {
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
             <h4 className="font-mono text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
+              <TrendingUp className="w-4 h-4 text-purple-600" />
               Level & EXP
             </h4>
             <div className="text-center py-4">
-              <p className="font-mono text-5xl font-bold text-emerald-600">{stats.level}</p>
+              <p className="font-mono text-5xl font-bold text-purple-600">{stats.level}</p>
               <p className="text-xs text-slate-500 mt-1">Level</p>
             </div>
             <div className="mt-4">
@@ -491,7 +491,7 @@ export default function ProfileContent() {
               </div>
               <div className="w-full h-3 bg-slate-100 rounded-full overflow-hidden">
                 <div
-                  className="h-full bg-gradient-to-r from-emerald-400 to-emerald-600 transition-all duration-500 rounded-full"
+                  className="h-full bg-gradient-to-r from-purple-400 to-purple-600 transition-all duration-500 rounded-full"
                   style={{ width: `${expPercentage}%` }}
                 />
               </div>
@@ -503,7 +503,7 @@ export default function ProfileContent() {
 
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
             <h4 className="font-mono text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-              <Award className="w-4 h-4 text-emerald-600" />
+              <Award className="w-4 h-4 text-purple-600" />
               Pencapaian
             </h4>
             <div className="space-y-3">
@@ -513,17 +513,17 @@ export default function ProfileContent() {
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                 <span className="text-sm text-slate-700">Win Rate</span>
-                <span className={`font-mono font-bold ${winRate >= 50 ? "text-emerald-600" : "text-red-600"}`}>
+                <span className={`font-mono font-bold ${winRate >= 50 ? "text-purple-600" : "text-red-600"}`}>
                   {winRate}%
                 </span>
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                 <span className="text-sm text-slate-700">Total EXP</span>
-                <span className="font-mono font-bold text-emerald-600">{stats.exp}</span>
+                <span className="font-mono font-bold text-purple-600">{stats.exp}</span>
               </div>
               <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
                 <span className="text-sm text-slate-700">Total Saldo</span>
-                <span className={`font-mono font-bold ${balance >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                <span className={`font-mono font-bold ${balance >= 0 ? "text-purple-600" : "text-red-600"}`}>
                   {formatCurrency(balance < 0 ? 0 : balance)}
                 </span>
               </div>
@@ -535,7 +535,7 @@ export default function ProfileContent() {
       {tab === "history" && (
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs">
           <h4 className="font-mono text-sm font-bold text-slate-900 mb-4 flex items-center gap-2">
-            <History className="w-4 h-4 text-emerald-600" />
+            <History className="w-4 h-4 text-purple-600" />
             Riwayat Battle
           </h4>
 
@@ -552,7 +552,7 @@ export default function ProfileContent() {
                   key={match.id}
                   className={`flex items-center justify-between p-3 rounded-xl border ${
                     match.result === "WIN"
-                      ? "bg-emerald-50 border-emerald-200"
+                      ? "bg-purple-50 border-purple-200"
                       : match.result === "LOSE"
                       ? "bg-red-50 border-red-200"
                       : "bg-slate-50 border-slate-200"
@@ -561,7 +561,7 @@ export default function ProfileContent() {
                   <div className="flex items-center gap-3">
                     <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
                       match.result === "WIN"
-                        ? "bg-emerald-200 text-emerald-700"
+                        ? "bg-purple-200 text-purple-700"
                         : match.result === "LOSE"
                         ? "bg-red-200 text-red-700"
                         : "bg-slate-200 text-slate-700"
@@ -585,12 +585,12 @@ export default function ProfileContent() {
                   </div>
                   <div className="text-right">
                     <p className={`text-sm font-mono font-bold ${
-                      match.result === "WIN" ? "text-emerald-600" : "text-red-600"
+                      match.result === "WIN" ? "text-purple-600" : "text-red-600"
                     }`}>
                       {match.result === "WIN" ? "+" : ""}{match.exp_change} EXP
                     </p>
                     <p className={`text-xs font-mono ${
-                      match.result === "WIN" ? "text-emerald-600" : "text-red-600"
+                      match.result === "WIN" ? "text-purple-600" : "text-red-600"
                     }`}>
                       {match.result === "WIN" ? "+" : ""}{formatCurrency(match.money_change)}
                     </p>
@@ -636,7 +636,7 @@ export default function ProfileContent() {
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
                       placeholder="Minimal 4 karakter"
-                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent text-sm font-mono pr-10"
+                      className="w-full px-4 py-2.5 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent text-sm font-mono pr-10"
                     />
                     <button
                       onClick={() => setShowNewPassword(!showNewPassword)}
@@ -669,7 +669,7 @@ export default function ProfileContent() {
               <button
                 onClick={handleChangePassword}
                 disabled={passwordLoading || newPassword.length < 4}
-                className="w-full px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-mono text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-mono text-sm font-bold disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {passwordLoading ? (
                   <RefreshCw className="w-4 h-4 animate-spin inline mr-2" />
@@ -686,7 +686,7 @@ export default function ProfileContent() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white rounded-2xl w-full max-w-md p-6 shadow-xl">
             <div className="flex items-center justify-between mb-4">
-              <h3 className="font-mono text-lg font-bold text-emerald-600">
+              <h3 className="font-mono text-lg font-bold text-purple-600">
                 Password Baru
               </h3>
               <button
@@ -698,11 +698,11 @@ export default function ProfileContent() {
             </div>
 
             <div className="space-y-4">
-              <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg">
-                <p className="text-sm text-emerald-700 font-medium">
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg">
+                <p className="text-sm text-purple-700 font-medium">
                   Password berhasil digenerate!
                 </p>
-                <p className="text-xs text-emerald-600 mt-1">
+                <p className="text-xs text-purple-600 mt-1">
                   Silakan salin password berikut untuk digunakan.
                 </p>
               </div>
@@ -714,9 +714,9 @@ export default function ProfileContent() {
               </div>
 
               {passwordCopied ? (
-                <div className="p-3 bg-emerald-50 border border-emerald-200 rounded-lg flex items-center gap-3">
-                  <Check className="w-5 h-5 text-emerald-600" />
-                  <p className="text-sm text-emerald-700 font-medium">
+                <div className="p-3 bg-purple-50 border border-purple-200 rounded-lg flex items-center gap-3">
+                  <Check className="w-5 h-5 text-purple-600" />
+                  <p className="text-sm text-purple-700 font-medium">
                     Password berhasil disalin!
                   </p>
                 </div>
@@ -740,7 +740,7 @@ export default function ProfileContent() {
                   closePasswordResult();
                 }}
                 className={`flex-1 px-4 py-2.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 transition-colors font-mono text-sm font-bold ${
-                  passwordCopied ? "bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600" : ""
+                  passwordCopied ? "bg-purple-600 text-white hover:bg-purple-700 border-purple-600" : ""
                 }`}
               >
                 {passwordCopied ? "Selesai" : "Tutup"}
@@ -748,7 +748,7 @@ export default function ProfileContent() {
               {passwordCopied && (
                 <button
                   onClick={closePasswordResult}
-                  className="flex-1 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors font-mono text-sm font-bold"
+                  className="flex-1 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-mono text-sm font-bold"
                 >
                   Selesai
                 </button>

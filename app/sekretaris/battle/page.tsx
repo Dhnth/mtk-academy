@@ -427,8 +427,8 @@ export default function BattlePage() {
         {/* Solo Mode */}
         <div className="bg-white border border-slate-200 rounded-2xl p-6 hover:shadow-md transition-shadow">
           <div className="flex items-center gap-3 mb-4">
-            <div className="p-2 bg-blue-100 rounded-xl">
-              <Swords className="w-6 h-6 text-blue-600" />
+            <div className="p-2 bg-purple-100 rounded-xl">
+              <Swords className="w-6 h-6 text-purple-600" />
             </div>
             <h3 className="font-mono font-bold text-slate-900">Solo Duel</h3>
           </div>
@@ -437,7 +437,7 @@ export default function BattlePage() {
           </p>
           <button
             onClick={() => router.push("/sekretaris/battle/solo")}
-            className="w-full py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-mono text-sm font-bold"
+            className="w-full py-2.5 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-mono text-sm font-bold"
           >
             Cari Lawan
           </button>

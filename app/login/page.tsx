@@ -169,7 +169,7 @@ export default function LoginPage() {
           {/* Footer */}
           <div className="mt-6 pt-6 border-t border-slate-200/60 flex flex-col items-center gap-2">
             <span className="font-mono text-[10px] text-slate-400 tracking-wider">
-              © 2026 Math Battle Arena — v1.0.0
+              © 2026 MTK Academy
             </span>
           </div>
         </div>

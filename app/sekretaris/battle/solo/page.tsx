@@ -162,8 +162,8 @@ export default function SoloMatchmakingPage() {
 
       {/* Header */}
       <div className="text-center">
-        <div className="w-16 h-16 bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-          <Swords className="w-8 h-8 text-blue-600" />
+        <div className="w-16 h-16 bg-purple-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
+          <Swords className="w-8 h-8 text-purple-600" />
         </div>
         <h2 className="font-mono text-2xl font-bold text-slate-900">
           Solo Duel
@@ -178,7 +178,7 @@ export default function SoloMatchmakingPage() {
         {isQueueing ? (
           <div className="text-center space-y-4">
             <div className="flex justify-center">
-              <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+              <Loader2 className="w-12 h-12 text-purple-600 animate-spin" />
             </div>
             <div>
               <p className="font-mono text-lg font-bold text-slate-900">
@@ -207,7 +207,7 @@ export default function SoloMatchmakingPage() {
             </div>
             <button
               onClick={startQueue}
-              className="w-full py-3 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors font-mono text-sm font-bold"
+              className="w-full py-3 bg-purple-600 text-white rounded-xl hover:bg-purple-700 transition-colors font-mono text-sm font-bold"
             >
               Cari Lawan
             </button>
@@ -294,7 +294,7 @@ export default function SoloMatchmakingPage() {
                 setShowTimeoutModal(false);
                 router.push("/sekretaris/battle");
               }}
-              className="w-full px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors font-mono text-sm font-bold"
+              className="w-full px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors font-mono text-sm font-bold"
             >
               Kembali ke Battle
             </button>
