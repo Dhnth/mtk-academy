@@ -1,12 +1,6 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { getToken } from "next-auth/jwt";
-
-interface CustomToken {
-  id?: string;
-  role?: "ADMIN" | "SECRETARY" | "STUDENT";
-  class_id?: string | null;
-}
+import { auth } from "@/auth";
 
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
@@ -15,25 +9,32 @@ export async function proxy(req: NextRequest) {
   const publicPaths = ["/login", "/profile"];
   const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
 
-  const token = (await getToken({
-    req,
-    secret: process.env.NEXTAUTH_SECRET,
-  })) as CustomToken | null;
+  // 🔥 API routes - izinkan semua (kecuali yang butuh auth khusus)
+  if (pathname.startsWith("/api/")) {
+    return NextResponse.next();
+  }
 
-  const isLoggedIn = !!token;
-  const role = token?.role;
+  // 🔥 Static files - izinkan
+  if (pathname.startsWith("/_next") || pathname.includes(".")) {
+    return NextResponse.next();
+  }
 
-  // 0. Izinkan akses ke public paths tanpa login
+  // 🔥 Pakai auth() langsung, bukan getToken
+  const session = await auth();
+  const isLoggedIn = !!session?.user;
+  const role = session?.user?.role;
+
+  // Izinkan akses ke public paths tanpa login
   if (isPublicPath) {
     return NextResponse.next();
   }
 
-  // 1. Jika belum login dan mencoba akses halaman terproteksi
-  if (!isLoggedIn && pathname !== "/login") {
+  // Jika belum login dan bukan public path, redirect ke login
+  if (!isLoggedIn) {
     return NextResponse.redirect(new URL("/login", req.url));
   }
 
-  // 2. Jika sudah login dan mencoba membuka halaman /login, redirect sesuai Role
+  // Jika sudah login dan mencoba membuka halaman /login, redirect sesuai Role
   if (isLoggedIn && pathname === "/login") {
     if (role === "ADMIN") {
       return NextResponse.redirect(new URL("/guru", req.url));
@@ -44,7 +45,7 @@ export async function proxy(req: NextRequest) {
     return NextResponse.redirect(new URL("/murid", req.url));
   }
 
-  // 3. Proteksi Akses Halaman Berdasarkan Role
+  // Proteksi Akses Halaman Berdasarkan Role
   if (isLoggedIn) {
     // Halaman Guru / Admin
     if (pathname.startsWith("/guru") && role !== "ADMIN") {
@@ -66,12 +67,12 @@ export async function proxy(req: NextRequest) {
 }
 
 // Helper lokasi halaman default per role
-function getRoleDefaultPath(role?: "ADMIN" | "SECRETARY" | "STUDENT"): string {
+function getRoleDefaultPath(role?: string): string {
   if (role === "ADMIN") return "/guru";
   if (role === "SECRETARY") return "/sekretaris";
   return "/murid";
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
