@@ -28,19 +28,21 @@ export default function LoginPage() {
   const router = useRouter();
   const { data: session, status } = useSession();
 
-  // Auto redirect jika sudah login
+  // Auto redirect jika sudah login - PAKAI WINDOW.LOCATION
   useEffect(() => {
     if (status === "authenticated" && session?.user) {
       const role = session.user.role;
       if (role === "ADMIN") {
-        router.push("/guru");
+        window.location.href = "/guru";
       } else if (role === "SECRETARY") {
-        router.push("/sekretaris");
+        window.location.href = "/sekretaris";
       } else if (role === "STUDENT") {
-        router.push("/murid");
+        window.location.href = "/murid";
+      } else {
+        window.location.href = "/murid";
       }
     }
-  }, [session, status, router]);
+  }, [session, status]);
 
   const handleLogin = async (e: FormEvent) => {
     e.preventDefault();
@@ -60,23 +62,20 @@ export default function LoginPage() {
         return;
       }
 
-      // Ambil data profil user untuk mengecek role
+      // 🔥 PAKAI WINDOW.LOCATION LANGSUNG, BUKAN ROUTER.PUSH
       const meRes = await fetch("/api/me");
-      if (!meRes.ok) {
-        setErrorMsg("Gagal mengambil data profil. Silakan coba lagi.");
-        setLoading(false);
-        return;
-      }
-
-      const userData: UserProfileResponse = await meRes.json();
-
-      // Redirect sesuai dengan Role User
-      if (userData.role === "ADMIN") {
-        router.push("/guru");
-      } else if (userData.role === "SECRETARY") {
-        router.push("/sekretaris");
+      if (meRes.ok) {
+        const userData: UserProfileResponse = await meRes.json();
+        if (userData.role === "ADMIN") {
+          window.location.href = "/guru";
+        } else if (userData.role === "SECRETARY") {
+          window.location.href = "/sekretaris";
+        } else {
+          window.location.href = "/murid";
+        }
       } else {
-        router.push("/murid");
+        // Fallback: redirect ke halaman default
+        window.location.href = "/murid";
       }
     } catch {
       setErrorMsg("Terjadi kesalahan jaringan/server. Silakan coba lagi.");
