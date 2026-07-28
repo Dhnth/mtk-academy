@@ -11,6 +11,10 @@ interface CustomToken {
 export async function proxy(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // 🔥 PUBLIC PATHS - Tidak perlu login
+  const publicPaths = ["/login", "/profile"];
+  const isPublicPath = publicPaths.some((path) => pathname.startsWith(path));
+
   const token = (await getToken({
     req,
     secret: process.env.NEXTAUTH_SECRET,
@@ -18,6 +22,11 @@ export async function proxy(req: NextRequest) {
 
   const isLoggedIn = !!token;
   const role = token?.role;
+
+  // 0. Izinkan akses ke public paths tanpa login
+  if (isPublicPath) {
+    return NextResponse.next();
+  }
 
   // 1. Jika belum login dan mencoba akses halaman terproteksi
   if (!isLoggedIn && pathname !== "/login") {
