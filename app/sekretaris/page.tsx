@@ -444,6 +444,12 @@ export default function SekretarisPage() {
                 {formatCurrency(balance < 0 ? 0 : balance)}
               </p>
             </div>
+                        <div className="text-center">
+              <p className="text-[10px] font-mono text-rose-600">Pengeluaran</p>
+              <p className="font-mono text-sm font-bold text-rose-600">
+                {formatCurrency(profile.expense)}
+              </p>
+            </div>
             <div className="flex items-center gap-2 text-[10px] font-mono">
               <span className="text-emerald-600 font-bold">
                 W: {profile.wins}

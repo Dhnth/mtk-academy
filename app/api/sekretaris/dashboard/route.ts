@@ -56,7 +56,6 @@ export async function GET() {
 
     const userId = session.user.id;
 
-    // 1. Get user profile
     const profileResult = await query(
       `SELECT 
         u.id,
@@ -86,15 +85,49 @@ export async function GET() {
       );
     }
 
-    // AUTO LEVEL UP
+    // ==========================================
+    // 1. FIX EXP NEGATIF -> SET 0
+    // ==========================================
+    let currentExp = Number(profile.exp || 0);
+    if (currentExp < 0) {
+      currentExp = 0;
+      await query(
+        "UPDATE users SET exp = 0 WHERE id = $1",
+        [userId]
+      );
+    }
+
+    // ==========================================
+    // 2. FIX DATA: Settlement Income & Expense
+    // ==========================================
+    let currentIncome = Number(profile.income || 0);
+    let currentExpense = Number(profile.expense || 0);
+
+    if (currentIncome > 0 && currentExpense > 0) {
+      if (currentIncome >= currentExpense) {
+        currentIncome = currentIncome - currentExpense;
+        currentExpense = 0;
+      } else {
+        currentExpense = currentExpense - currentIncome;
+        currentIncome = 0;
+      }
+
+      await query(
+        "UPDATE users SET income = $1, expense = $2 WHERE id = $3",
+        [currentIncome, currentExpense, userId]
+      );
+    }
+
+    // ==========================================
+    // 3. AUTO LEVEL UP
+    // ==========================================
     const currentLevel = Number(profile.level || 1);
-    const currentExp = Number(profile.exp || 0);
     let levelUp = false;
     let newLevel = currentLevel;
     let newExp = currentExp;
 
     let expNeeded = currentLevel * 100;
-    let canLevelUp = currentExp >= expNeeded;
+    let canLevelUp = newExp >= expNeeded;
 
     while (canLevelUp) {
       newExp = newExp - expNeeded;
@@ -112,7 +145,9 @@ export async function GET() {
       );
     }
 
-    // 2. Get class summary - pakai alias lowercase
+    // ==========================================
+    // 4. GET CLASS SUMMARY
+    // ==========================================
     let classSummary: Array<{
       id: string;
       name: string;
@@ -146,7 +181,9 @@ export async function GET() {
       }));
     }
 
-    // 3. Get today's attendance - pakai alias lowercase
+    // ==========================================
+    // 5. GET TODAY'S ATTENDANCE
+    // ==========================================
     const today = new Date().toISOString().split("T")[0];
     const todayAttendance = {
       total: 0,
@@ -187,7 +224,9 @@ export async function GET() {
       todayAttendance.disPen = Number(attRow?.dispen || 0);
     }
 
-    // 4. Get recent activities
+    // ==========================================
+    // 6. GET RECENT ACTIVITIES
+    // ==========================================
     const activitiesResult = await query(
       `SELECT 
         'attendance' as type,
@@ -228,6 +267,8 @@ export async function GET() {
       ];
     }
 
+    const finalBalance = currentIncome - currentExpense;
+
     return NextResponse.json({
       profile: {
         id: profile.id,
@@ -238,8 +279,9 @@ export async function GET() {
         class_name: profile.class_name,
         level: newLevel,
         exp: newExp,
-        income: Number(profile.income || 0),
-        expense: Number(profile.expense || 0),
+        income: currentIncome,
+        expense: currentExpense,
+        balance: finalBalance,
         wins: Number(profile.wins || 0),
         losses: Number(profile.losses || 0),
       },

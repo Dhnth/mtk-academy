@@ -43,7 +43,6 @@ export async function GET() {
 
     const userId = session.user.id;
 
-    // Get user profile
     const profileResult = await query(
       `SELECT 
         u.id,
@@ -73,16 +72,53 @@ export async function GET() {
       );
     }
 
-    // AUTO LEVEL UP
-    // Level N → Level N+1: Butuh (Level N * 100) EXP
+    // ==========================================
+    // 1. FIX EXP NEGATIF -> SET 0
+    // ==========================================
+    let currentExp = Number(profile.exp || 0);
+    if (currentExp < 0) {
+      currentExp = 0;
+      await query(
+        "UPDATE users SET exp = 0 WHERE id = $1",
+        [userId]
+      );
+    }
+
+    // ==========================================
+    // 2. FIX DATA: Settlement Income & Expense
+    // ==========================================
+    let currentIncome = Number(profile.income || 0);
+    let currentExpense = Number(profile.expense || 0);
+
+    if (currentIncome > 0 && currentExpense > 0) {
+      if (currentIncome >= currentExpense) {
+        // Contoh: Income 1.000.000, Expense 100
+        // Hasil: Income 999.900, Expense 0
+        currentIncome = currentIncome - currentExpense;
+        currentExpense = 0;
+      } else {
+        // Contoh: Income 100, Expense 1.000.000
+        // Hasil: Income 0, Expense 999.900
+        currentExpense = currentExpense - currentIncome;
+        currentIncome = 0;
+      }
+
+      await query(
+        "UPDATE users SET income = $1, expense = $2 WHERE id = $3",
+        [currentIncome, currentExpense, userId]
+      );
+    }
+
+    // ==========================================
+    // 3. AUTO LEVEL UP
+    // ==========================================
     const currentLevel = Number(profile.level || 1);
-    const currentExp = Number(profile.exp || 0);
     let levelUp = false;
     let newLevel = currentLevel;
     let newExp = currentExp;
 
     let expNeeded = currentLevel * 100;
-    let canLevelUp = currentExp >= expNeeded;
+    let canLevelUp = newExp >= expNeeded;
 
     while (canLevelUp) {
       newExp = newExp - expNeeded;
@@ -100,7 +136,9 @@ export async function GET() {
       );
     }
 
-    // Get class summary
+    // ==========================================
+    // 4. GET CLASS SUMMARY
+    // ==========================================
     let classSummary: ClassSummaryRow[] = [];
 
     if (profile.class_id) {
@@ -138,49 +176,9 @@ export async function GET() {
       }
     }
 
-    if (classSummary.length === 0) {
-      const userClassResult = await query(
-        `SELECT class_id FROM users WHERE id = $1`,
-        [userId]
-      );
-      const userClass = getFirstRow(userClassResult) as { class_id: string | null } | null;
-
-      if (userClass?.class_id) {
-        const classDetailResult = await query(
-          `SELECT id, name FROM classes WHERE id = $1`,
-          [userClass.class_id]
-        );
-        const classDetail = getFirstRow(classDetailResult) as { id: string; name: string } | null;
-
-        if (classDetail) {
-          const usersInClassResult = await query(
-            `SELECT 
-              COUNT(*) as total_count, 
-              COALESCE(SUM(income), 0) as total_income, 
-              COALESCE(SUM(expense), 0) as total_expense
-            FROM users
-            WHERE class_id = $1`,
-            [userClass.class_id]
-          );
-
-          const usersData = getFirstRow(usersInClassResult) as { 
-            total_count: string | number; 
-            total_income: string | number; 
-            total_expense: string | number 
-          } | null;
-
-          classSummary = [{
-            id: classDetail.id,
-            name: classDetail.name,
-            studentCount: Number(usersData?.total_count || 0),
-            totalIncome: Number(usersData?.total_income || 0),
-            totalExpense: Number(usersData?.total_expense || 0),
-          }];
-        }
-      }
-    }
-
-    // Get recent activities
+    // ==========================================
+    // 5. GET RECENT ACTIVITIES
+    // ==========================================
     const activitiesResult = await query(
       `SELECT 
         'match' as type,
@@ -216,6 +214,8 @@ export async function GET() {
       created_at: row.created_at,
     }));
 
+    const finalBalance = currentIncome - currentExpense;
+
     const profileResponse = {
       id: profile.id,
       username: profile.username,
@@ -225,8 +225,9 @@ export async function GET() {
       class_name: profile.class_name,
       level: newLevel,
       exp: newExp,
-      income: Number(profile.income || 0),
-      expense: Number(profile.expense || 0),
+      income: currentIncome,
+      expense: currentExpense,
+      balance: finalBalance,
       wins: Number(profile.wins || 0),
       losses: Number(profile.losses || 0),
     };

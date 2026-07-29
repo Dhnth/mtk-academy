@@ -438,6 +438,7 @@ async function endMatch(
 }
 
 // Helper: Update user stats with progressive rewards
+// Helper: Update user stats with progressive rewards
 async function updateUserStats(
   matchId: string,
   player1Id: string,
@@ -466,6 +467,7 @@ async function updateUserStats(
     losers = loseMembersResult.rows.map((m) => m.user_id);
   }
 
+  // UPDATE WINNERS
   for (const wId of winners) {
     const userDataResult = await query<{ level: number }>(
       "SELECT level FROM users WHERE id = $1",
@@ -489,20 +491,32 @@ async function updateUserStats(
     );
   }
 
+  // UPDATE LOSERS - dengan cek EXP tersisa
   for (const lId of losers) {
-    const userDataResult = await query<{ level: number; income: number; expense: number }>(
-      "SELECT level, income, expense FROM users WHERE id = $1",
+    const userDataResult = await query<{ level: number; income: number; expense: number; exp: number }>(
+      "SELECT level, income, expense, exp FROM users WHERE id = $1",
       [lId]
     );
     const userData = getFirstRow(userDataResult);
     const level = Number(userData?.level || 1);
     const currentIncome = Number(userData?.income || 0);
     const currentExpense = Number(userData?.expense || 0);
+    const currentExp = Number(userData?.exp || 0);
     const currentBalance = currentIncome - currentExpense;
     
     const { expLose, moneyLose } = calculateRewards(level);
     const deductionAmount = Math.abs(moneyLose);
 
+    // ================================================================
+    // CEK EXP: Hanya kurangi sebanyak yang tersedia (minimal 0)
+    // ================================================================
+    const expReduction = Math.abs(expLose); // expLose negatif, ambil absolutnya
+    const actualExpReduction = Math.min(expReduction, currentExp); // Kurangi sebanyak yang tersedia
+    const newExp = currentExp - actualExpReduction; // EXP baru (pasti >= 0)
+
+    // ================================================================
+    // CEK SALDO: Kurangi income, jika kurang maka expense nambah
+    // ================================================================
     let newIncome = currentIncome;
     let newExpense = currentExpense;
 
@@ -517,18 +531,18 @@ async function updateUserStats(
     await query(
       `UPDATE users SET 
         losses = losses + 1, 
-        exp = exp + $1, 
+        exp = $1, 
         income = $2, 
         expense = $3 
       WHERE id = $4`,
-      [expLose, newIncome, newExpense, lId]
+      [newExp, newIncome, newExpense, lId]
     );
 
     const rewardId = crypto.randomUUID ? crypto.randomUUID() : Date.now().toString() + Math.random().toString();
     await query(
       `INSERT INTO match_rewards (id, match_id, player_id, action, exp_change, money_change) 
        VALUES ($1, $2, $3, 'LOSE', $4, $5)`,
-      [rewardId, matchId, lId, expLose, moneyLose]
+      [rewardId, matchId, lId, -actualExpReduction, moneyLose] // exp_change negatif sesuai yang dikurangi
     );
   }
 }

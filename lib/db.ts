@@ -6,11 +6,10 @@ const pool = new Pool({
   ssl: {
     rejectUnauthorized: false,
   },
-  max: 10, // Kurangi dari 20 jadi 10
+  max: 5, // Kurangi dari 10 jadi 5 (Supabase free tier max 15)
   idleTimeoutMillis: 30000,
-  connectionTimeoutMillis: 5000, // Naikkan dari 2000 jadi 5000
-  // Tambahkan timeout untuk query
-  statement_timeout: 10000, // 10 detik
+  connectionTimeoutMillis: 5000,
+  statement_timeout: 10000,
   query_timeout: 10000,
 });
 
@@ -50,6 +49,8 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
   for (let attempt = 0; attempt <= retries; attempt++) {
     const client = await pool.connect();
     try {
+      // Set timezone ke UTC
+      await client.query("SET TIME ZONE 'UTC'");
       const result = await client.query<T>(sql, params);
       return result;
     } catch (error) {
@@ -67,7 +68,7 @@ export async function query<T extends QueryResultRow = QueryResultRow>(
       }
       throw error;
     } finally {
-      client.release();
+      client.release(); // ✅ Pastikan koneksi selalu direlease
     }
   }
   
