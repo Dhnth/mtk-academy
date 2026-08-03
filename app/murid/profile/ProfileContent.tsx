@@ -743,7 +743,7 @@ export default function ProfileContent() {
                   passwordCopied ? "bg-emerald-600 text-white hover:bg-emerald-700 border-emerald-600" : ""
                 }`}
               >
-                {passwordCopied ? "Selesai" : "Tutup"}
+                {passwordCopied ? "Tutup" : "Selesai"}
               </button>
               {passwordCopied && (
                 <button

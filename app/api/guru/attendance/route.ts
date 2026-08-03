@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { query, getRows } from "@/lib/db";
+import { auth } from "@/auth";
 
 interface AttendanceRow {
   id: string;
@@ -10,15 +11,41 @@ interface AttendanceRow {
   class_name: string;
   status: string;
   created_at: string;
+  date: string;
 }
 
-// GET - Ambil data kehadiran untuk guru (semua kelas)
+// GET - Ambil data kehadiran untuk guru dengan filter tanggal
 export async function GET(request: NextRequest) {
   try {
-    const { searchParams } = new URL(request.url);
-    const date = searchParams.get("date") || new Date().toISOString().split("T")[0];
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
 
-    // Ambil semua data kehadiran hari ini dengan informasi siswa dan kelas
+    const { searchParams } = new URL(request.url);
+    const startDate = searchParams.get("startDate");
+    const endDate = searchParams.get("endDate");
+    
+    // Default: hari ini
+    const today = new Date().toISOString().split("T")[0];
+    
+    let dateFilter = "";
+    let queryParams: string[] = [];
+    
+    if (startDate && endDate) {
+      dateFilter = "WHERE a.date BETWEEN $1 AND $2";
+      queryParams = [startDate, endDate];
+    } else if (startDate) {
+      dateFilter = "WHERE a.date = $1";
+      queryParams = [startDate];
+    } else {
+      dateFilter = "WHERE a.date = $1";
+      queryParams = [today];
+    }
+
     const attendanceResult = await query<AttendanceRow>(
       `SELECT 
         a.id,
@@ -28,13 +55,14 @@ export async function GET(request: NextRequest) {
         a.class_id,
         c.name as class_name,
         a.status,
-        a.created_at
+        a.created_at,
+        a.date
       FROM attendances a
       JOIN users u ON a.student_id = u.id
       JOIN classes c ON a.class_id = c.id
-      WHERE a.date = $1
-      ORDER BY c.name ASC, u.name ASC`,
-      [date]
+      ${dateFilter}
+      ORDER BY a.date ASC, c.name ASC, u.name ASC`,
+      queryParams
     );
 
     return NextResponse.json(getRows(attendanceResult));

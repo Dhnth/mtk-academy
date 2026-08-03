@@ -18,6 +18,10 @@ import {
   ChevronUp,
   FileSpreadsheet,
   Loader2,
+  CalendarRange,
+  ChevronLeft,
+  ChevronRight,
+  ChevronDown as ChevronDownIcon,
 } from "lucide-react";
 
 interface AttendanceData {
@@ -29,6 +33,7 @@ interface AttendanceData {
   class_name: string;
   status: "HADIR" | "IZIN" | "SAKIT" | "ALPHA" | "DIS PEN";
   created_at: string;
+  date: string;
 }
 
 interface AttendanceSummary {
@@ -47,6 +52,21 @@ interface ClassGroup {
   summary: AttendanceSummary;
 }
 
+type DateRangeType = "today" | "thisMonth" | "lastMonth" | "custom";
+
+// Group attendance by date
+function groupByDate(attendance: AttendanceData[]): Record<string, AttendanceData[]> {
+  const groups: Record<string, AttendanceData[]> = {};
+  attendance.forEach((item) => {
+    const dateKey = item.date;
+    if (!groups[dateKey]) {
+      groups[dateKey] = [];
+    }
+    groups[dateKey].push(item);
+  });
+  return groups;
+}
+
 export default function GuruKehadiranPage() {
   const [attendance, setAttendance] = useState<AttendanceData[]>([]);
   const [classGroups, setClassGroups] = useState<ClassGroup[]>([]);
@@ -56,15 +76,80 @@ export default function GuruKehadiranPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [expandedClasses, setExpandedClasses] = useState<Set<string>>(new Set());
   const [exporting, setExporting] = useState<string | null>(null);
+  const [showDateDropdown, setShowDateDropdown] = useState(false);
+
+  const [dateRangeType, setDateRangeType] = useState<DateRangeType>("today");
+  const [customStartDate, setCustomStartDate] = useState<string>("");
+  const [customEndDate, setCustomEndDate] = useState<string>("");
+
+  const formatDate = (date: Date): string => {
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "long",
+      year: "numeric",
+    }).format(date);
+  };
+
+  const formatDateShort = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    return new Intl.DateTimeFormat("id-ID", {
+      day: "numeric",
+      month: "short",
+      year: "numeric",
+    }).format(date);
+  };
+
+  const formatDateInput = (date: Date): string => {
+    return date.toISOString().split("T")[0];
+  };
+
+  const getDateRange = (type: DateRangeType): { start: string; end: string; label: string } => {
+    const today = new Date();
+    const todayStr = formatDateInput(today);
+
+    if (type === "today") {
+      return { start: todayStr, end: todayStr, label: `Hari Ini (${formatDate(today)})` };
+    }
+
+    if (type === "thisMonth") {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return { 
+        start: formatDateInput(start), 
+        end: formatDateInput(end),
+        label: `Bulan Ini (${new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(today)})`
+      };
+    }
+
+    if (type === "lastMonth") {
+      const start = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth(), 0);
+      return { 
+        start: formatDateInput(start), 
+        end: formatDateInput(end),
+        label: `Bulan Lalu (${new Intl.DateTimeFormat("id-ID", { month: "long", year: "numeric" }).format(start)})`
+      };
+    }
+
+    // custom
+    const s = customStartDate || todayStr;
+    const e = customEndDate || todayStr;
+    return { 
+      start: s, 
+      end: e,
+      label: `${formatDate(new Date(s))} - ${formatDate(new Date(e))}`
+    };
+  };
 
   const fetchAttendance = useCallback(async () => {
     setLoading(true);
     setError(null);
 
-    const today = new Date().toISOString().split("T")[0];
+    const range = getDateRange(dateRangeType);
 
     try {
-      const res = await fetch(`/api/guru/attendance?date=${today}`);
+      const url = `/api/guru/attendance?startDate=${range.start}&endDate=${range.end}`;
+      const res = await fetch(url);
       if (!res.ok) throw new Error("Gagal mengambil data kehadiran");
       const data = await res.json();
       setAttendance(data);
@@ -110,7 +195,7 @@ export default function GuruKehadiranPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [dateRangeType, customStartDate, customEndDate]);
 
   useEffect(() => {
     fetchAttendance();
@@ -121,10 +206,10 @@ export default function GuruKehadiranPage() {
     const toastId = toast.loading(`Mengexport data ${className}...`);
     
     try {
-      const today = new Date().toISOString().split("T")[0];
-      const response = await fetch(
-        `/api/guru/attendance/export/${classId}?date=${today}`
-      );
+      const range = getDateRange(dateRangeType);
+      const url = `/api/guru/attendance/export/${classId}?startDate=${range.start}&endDate=${range.end}`;
+
+      const response = await fetch(url);
 
       if (!response.ok) {
         let errorMessage = "Gagal mengexport data";
@@ -132,22 +217,21 @@ export default function GuruKehadiranPage() {
           const errorData = await response.json();
           errorMessage = errorData.error || errorMessage;
         } catch {
-          // If response is not JSON (like HTML error page)
           errorMessage = `Gagal mengexport data (HTTP ${response.status})`;
         }
         throw new Error(errorMessage);
       }
 
-      // Download file
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const urlObj = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
-      link.href = url;
-      link.download = `Rekap_Kehadiran_${className}_${today}.xlsx`;
+      link.href = urlObj;
+      const dateStr = range.start === range.end ? range.start : `${range.start}_to_${range.end}`;
+      link.download = `Rekap_Kehadiran_${className}_${dateStr}.xlsx`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(urlObj);
 
       toast.success(`Berhasil mengexport data ${className}`, {
         id: toastId,
@@ -161,6 +245,18 @@ export default function GuruKehadiranPage() {
       });
     } finally {
       setExporting(null);
+    }
+  };
+
+  const handleDateRangeChange = (type: DateRangeType) => {
+    setDateRangeType(type);
+    setShowDateDropdown(false);
+  };
+
+  const handleApplyCustomDate = () => {
+    if (customStartDate && customEndDate) {
+      setDateRangeType("custom");
+      setShowDateDropdown(false);
     }
   };
 
@@ -222,14 +318,6 @@ export default function GuruKehadiranPage() {
     return icons[status] || null;
   };
 
-  const formatDate = (date: Date): string => {
-    return new Intl.DateTimeFormat("id-ID", {
-      day: "numeric",
-      month: "long",
-      year: "numeric",
-    }).format(date);
-  };
-
   const formatTime = (dateStr: string): string => {
     const date = new Date(dateStr);
     return new Intl.DateTimeFormat("id-ID", {
@@ -237,6 +325,10 @@ export default function GuruKehadiranPage() {
       minute: "2-digit",
     }).format(date);
   };
+
+  const range = getDateRange(dateRangeType);
+  const groupedAttendance = groupByDate(attendance);
+  const dateKeys = Object.keys(groupedAttendance).sort();
 
   if (loading) {
     return (
@@ -296,8 +388,8 @@ export default function GuruKehadiranPage() {
           </h2>
           <p className="text-slate-500 text-xs sm:text-sm">
             {hasData 
-              ? `Kehadiran karyawan hari ini (${formatDate(new Date())})`
-              : "Belum ada data kehadiran hari ini"}
+              ? `Kehadiran karyawan (${range.label})`
+              : "Belum ada data kehadiran"}
           </p>
         </div>
         <button
@@ -308,18 +400,86 @@ export default function GuruKehadiranPage() {
         </button>
       </div>
 
-      <div className="bg-white border border-slate-200 rounded-2xl p-4 flex items-center gap-3 flex-wrap">
-        <Calendar className="w-5 h-5 text-blue-600" />
-        <span className="font-mono text-sm font-bold text-slate-900">
-          {formatDate(new Date())}
-        </span>
-        <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-mono font-bold rounded">
-          Hari Ini
-        </span>
-        {hasData && (
-          <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-mono font-bold rounded ml-auto">
-            {attendance.length} Karyawan
-          </span>
+      {/* Date Range Dropdown */}
+      <div className="relative">
+        <button
+          onClick={() => setShowDateDropdown(!showDateDropdown)}
+          className="w-full sm:w-auto flex items-center justify-between gap-2 px-4 py-3 bg-white border border-slate-200 rounded-xl hover:border-blue-400 transition-colors shadow-2xs"
+        >
+          <div className="flex items-center gap-2">
+            <CalendarRange className="w-4 h-4 text-blue-600" />
+            <span className="font-mono text-sm font-medium text-slate-700">
+              {range.label}
+            </span>
+          </div>
+          <ChevronDownIcon className={`w-4 h-4 text-slate-400 transition-transform ${showDateDropdown ? "rotate-180" : ""}`} />
+        </button>
+
+        {showDateDropdown && (
+          <div className="absolute left-0 right-0 mt-2 bg-white border border-slate-200 rounded-xl shadow-lg z-20 p-3 space-y-1">
+            <button
+              onClick={() => handleDateRangeChange("today")}
+              className={`w-full px-3 py-2 rounded-lg text-sm font-mono text-left transition-colors ${
+                dateRangeType === "today"
+                  ? "bg-blue-50 text-blue-700 font-bold"
+                  : "hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              Hari Ini
+            </button>
+            <button
+              onClick={() => handleDateRangeChange("thisMonth")}
+              className={`w-full px-3 py-2 rounded-lg text-sm font-mono text-left transition-colors ${
+                dateRangeType === "thisMonth"
+                  ? "bg-blue-50 text-blue-700 font-bold"
+                  : "hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              Bulan Ini
+            </button>
+            <button
+              onClick={() => handleDateRangeChange("lastMonth")}
+              className={`w-full px-3 py-2 rounded-lg text-sm font-mono text-left transition-colors ${
+                dateRangeType === "lastMonth"
+                  ? "bg-blue-50 text-blue-700 font-bold"
+                  : "hover:bg-slate-50 text-slate-700"
+              }`}
+            >
+              Bulan Lalu
+            </button>
+            
+            <div className="border-t border-slate-200 my-2"></div>
+            
+            <div className="space-y-2 p-2 bg-slate-50 rounded-lg">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1">
+                  <label className="text-[10px] font-mono text-slate-500">Dari</label>
+                  <input
+                    type="date"
+                    value={customStartDate}
+                    onChange={(e) => setCustomStartDate(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] font-mono text-slate-500">Sampai</label>
+                  <input
+                    type="date"
+                    value={customEndDate}
+                    onChange={(e) => setCustomEndDate(e.target.value)}
+                    className="w-full px-3 py-1.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <button
+                onClick={handleApplyCustomDate}
+                disabled={!customStartDate || !customEndDate}
+                className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-mono font-bold hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Terapkan
+              </button>
+            </div>
+          </div>
         )}
       </div>
 
@@ -330,8 +490,7 @@ export default function GuruKehadiranPage() {
             Belum Ada Info Kehadiran
           </h3>
           <p className="text-slate-500 text-center max-w-md">
-            Belum ada data kehadiran karyawan hari ini dari sekretaris. 
-            Mohon tunggu hingga sekretaris menginput kehadiran.
+            Belum ada data kehadiran karyawan pada periode yang dipilih.
           </p>
         </div>
       ) : (
@@ -398,6 +557,9 @@ export default function GuruKehadiranPage() {
             ) : (
               filteredGroups.map((group) => {
                 const isExpanded = expandedClasses.has(group.classId);
+                const groupedByDateForClass = groupByDate(group.students);
+                const dateKeysForClass = Object.keys(groupedByDateForClass).sort();
+
                 return (
                   <div
                     key={group.classId}
@@ -415,7 +577,7 @@ export default function GuruKehadiranPage() {
                           </h3>
                           <div className="flex items-center gap-2 mt-0.5 flex-wrap">
                             <span className="text-[10px] font-mono text-slate-500">
-                              {group.students.length} karyawan
+                              {group.students.length} kehadiran
                             </span>
                             <span className="text-[10px] text-slate-300">•</span>
                             <span className="text-[10px] font-mono text-emerald-600">
@@ -426,6 +588,10 @@ export default function GuruKehadiranPage() {
                             </span>
                             <span className="text-[10px] font-mono text-red-600">
                               Alpha: {group.summary.alpha}
+                            </span>
+                            <span className="text-[10px] text-slate-300">•</span>
+                            <span className="text-[10px] font-mono text-slate-400">
+                              {dateKeysForClass.length} hari
                             </span>
                           </div>
                         </div>
@@ -467,36 +633,82 @@ export default function GuruKehadiranPage() {
 
                     {isExpanded && (
                       <div className="divide-y divide-slate-100">
-                        {group.students.map((item) => (
-                          <div
-                            key={item.id}
-                            className="px-4 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors"
-                          >
-                            <div className="flex items-center gap-3 min-w-0 flex-1">
-                              <div className="w-9 h-9 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
-                                <User className="w-4 h-4 text-blue-600" />
-                              </div>
-                              <div className="min-w-0">
-                                <p className="font-medium text-slate-900 text-sm truncate">
-                                  {item.student_name}
-                                </p>
-                                <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                  <span className="font-mono text-[10px] text-slate-400 truncate">
-                                    @{item.student_username}
+                        {dateKeysForClass.map((dateKey) => {
+                          const students = groupedByDateForClass[dateKey];
+                          const dateObj = new Date(dateKey);
+                          const formattedDate = dateObj.toLocaleDateString("id-ID", {
+                            day: "numeric",
+                            month: "long",
+                            year: "numeric",
+                          });
+                          
+                          const daySummary = {
+                            total: students.length,
+                            hadir: students.filter((s) => s.status === "HADIR").length,
+                            izin: students.filter((s) => s.status === "IZIN").length,
+                            sakit: students.filter((s) => s.status === "SAKIT").length,
+                            alpha: students.filter((s) => s.status === "ALPHA").length,
+                            disPen: students.filter((s) => s.status === "DIS PEN").length,
+                          };
+
+                          return (
+                            <div key={dateKey} className="px-4 py-3">
+                              {/* Date Header */}
+                              <div className="flex items-center justify-between mb-2">
+                                <div className="flex items-center gap-2">
+                                  <Calendar className="w-4 h-4 text-blue-600" />
+                                  <span className="font-mono font-bold text-sm text-slate-900">
+                                    {formattedDate}
                                   </span>
-                                  <span className="text-[10px] text-slate-300">•</span>
-                                  <span className="font-mono text-[10px] text-slate-500">
-                                    {formatTime(item.created_at)}
+                                  <span className="px-2 py-0.5 bg-slate-100 text-slate-500 text-[10px] font-mono rounded">
+                                    {students.length} kehadiran
                                   </span>
                                 </div>
+                                <div className="flex items-center gap-2 text-[10px] font-mono">
+                                  <span className="text-emerald-600">H: {daySummary.hadir}</span>
+                                  <span className="text-amber-600">I: {daySummary.izin}</span>
+                                  <span className="text-blue-600">S: {daySummary.sakit}</span>
+                                  <span className="text-red-600">A: {daySummary.alpha}</span>
+                                  <span className="text-purple-600">D: {daySummary.disPen}</span>
+                                </div>
+                              </div>
+
+                              {/* Student List for this date */}
+                              <div className="divide-y divide-slate-100 border border-slate-100 rounded-xl overflow-hidden">
+                                {students.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    className="px-3 py-2.5 flex items-center justify-between hover:bg-slate-50 transition-colors"
+                                  >
+                                    <div className="flex items-center gap-3 min-w-0 flex-1">
+                                      <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center shrink-0">
+                                        <User className="w-3.5 h-3.5 text-blue-600" />
+                                      </div>
+                                      <div className="min-w-0">
+                                        <p className="font-medium text-slate-900 text-sm truncate">
+                                          {item.student_name}
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+                                          <span className="font-mono text-[10px] text-slate-400 truncate">
+                                            @{item.student_username}
+                                          </span>
+                                          <span className="text-[10px] text-slate-300">•</span>
+                                          <span className="font-mono text-[10px] text-slate-500">
+                                            {formatTime(item.created_at)}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="flex items-center gap-2 shrink-0">
+                                      {getStatusIcon(item.status)}
+                                      {getStatusBadge(item.status)}
+                                    </div>
+                                  </div>
+                                ))}
                               </div>
                             </div>
-                            <div className="flex items-center gap-2 shrink-0">
-                              {getStatusIcon(item.status)}
-                              {getStatusBadge(item.status)}
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </div>
